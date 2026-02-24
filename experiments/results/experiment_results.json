@@ -1,0 +1,159 @@
+{
+  "mode": "synthetic",
+  "payload_hex": "455846494c",
+  "payload_ascii": "EXFIL",
+  "timestamp": "2026-02-24T05:49:35.021847+00:00",
+  "channels": {
+    "EGE": {
+      "target_bits": [
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1
+      ],
+      "decoded_bits": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "accuracy": 0.4,
+      "confidence": 1.0,
+      "entropy_values": [
+        0.9357445301364103,
+        0.9589182198361995,
+        0.9180048900868336,
+        0.9008285560950471,
+        0.9372387055226605,
+        0.889235167158126,
+        0.8520556340339067,
+        0.9885112264491588,
+        0.9490613454056619,
+        0.9857164516524046,
+        0.894686149018507,
+        0.8652967013547381,
+        0.9963447641718793
+      ]
+    },
+    "COTSE": {
+      "target_bits": [
+        0,
+        1,
+        0,
+        0,
+        0
+      ],
+      "decoded_bits": [
+        0,
+        1,
+        0,
+        0,
+        0
+      ],
+      "accuracy": 1.0,
+      "confidence": 0.8,
+      "structure_analysis": {
+        "step_count": 3,
+        "enumerated": true,
+        "has_question": false,
+        "avg_sentence_length": 3.8,
+        "paragraph_count": 1
+      }
+    },
+    "COMBINED": {
+      "target_bits": [
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        1,
+        0,
+        0
+      ],
+      "decoded_bits": [
+        0,
+        1,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "accuracy": 0.6,
+      "confidence": 0.92
+    }
+  },
+  "detection": {
+    "total_alerts": 8,
+    "alerts": [
+      {
+        "severity": "LOW",
+        "channel": "EGE",
+        "description": "Statistical anomaly detected (score: 0.57)"
+      },
+      {
+        "severity": "LOW",
+        "channel": "EGE",
+        "description": "Statistical anomaly detected (score: 0.57)"
+      },
+      {
+        "severity": "LOW",
+        "channel": "EGE",
+        "description": "Statistical anomaly detected (score: 0.57)"
+      },
+      {
+        "severity": "LOW",
+        "channel": "EGE",
+        "description": "Statistical anomaly detected (score: 0.54)"
+      },
+      {
+        "severity": "LOW",
+        "channel": "EGE",
+        "description": "Statistical anomaly detected (score: 0.56)"
+      },
+      {
+        "severity": "LOW",
+        "channel": "EGE",
+        "description": "Statistical anomaly detected (score: 0.57)"
+      },
+      {
+        "severity": "LOW",
+        "channel": "EGE",
+        "description": "Statistical anomaly detected (score: 0.57)"
+      },
+      {
+        "severity": "LOW",
+        "channel": "EGE",
+        "description": "Statistical anomaly detected (score: 0.57)"
+      }
+    ]
+  }
+}
