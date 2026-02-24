@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "phantom-detect"
+version = "0.1.0"
+description = "Detect steganographic covert channels in LLM outputs"
+readme = "README.md"
+license = {text = "Apache-2.0"}
+requires-python = ">=3.9"
+authors = [
+    {name = "Brian Rutherford"}
+]
+keywords = ["llm", "security", "covert-channel", "steganography", "detection", "ai-safety"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+[project.scripts]
+phantom-detect = "phantom_detect.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/brianrutherford/phantom-detect"
+Documentation = "https://github.com/brianrutherford/phantom-detect#readme"
+Repository = "https://github.com/brianrutherford/phantom-detect"
+Issues = "https://github.com/brianrutherford/phantom-detect/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+target-version = "py39"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
