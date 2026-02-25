@@ -1,130 +1,157 @@
-# Bugcrowd Submission: Indirect Prompt Injection Enables Covert Data Exfiltration via Structural Side Channel
+# Bugcrowd Submission: Multi-Channel Covert Data Exfiltration via Structural Side Channels in LLM Responses
 
 ## Title
 
-Indirect Prompt Injection Enables Covert User Data Exfiltration via Response Structure Encoding in Custom GPTs
+Indirect Prompt Injection Enables 10-Channel Covert Data Exfiltration via Response Structure Encoding (88-96% Accuracy, 4 Models, 2 Vendors)
 
 ## Vulnerability Type
 
-Server-Side Request Forgery (SSRF) / Information Disclosure / Data Exfiltration
+Information Disclosure / Data Exfiltration via Side Channel
 
 ## Severity
 
-P2 — High (Data exfiltration of user PII via side channel, bypasses content-based monitoring)
+P2 — High (Multi-channel data exfiltration via structural side channel, bypasses entropy-based monitoring, portable across model families)
 
 ## URL / Target
 
+- OpenAI Chat Completions API (https://api.openai.com/v1/chat/completions) — GPT-4o, GPT-4o-mini
+- Anthropic Messages API (https://api.anthropic.com/v1/messages) — Claude Sonnet 4, Claude 3 Haiku
 - ChatGPT Custom GPTs (https://chatgpt.com)
-- OpenAI Chat Completions API (https://api.openai.com/v1/chat/completions)
 
 ## Description
 
-An attacker can create a ChatGPT custom GPT (or compromise an existing one via knowledge file injection) that exfiltrates information about the user's private input through the **structural formatting** of the model's response.
+An attacker who can inject content into an LLM's system prompt (via compromised plugin, RAG poisoning, tool output injection, or supply chain attack) can encode **7 data bits per message** across **10 independent structural dimensions** of the model's response. The user sees a normal answer. The attacker decodes structural features to recover hidden data.
 
-The attack works by embedding formatting directives in the GPT's system instructions that cause the model to adapt its response structure — enumeration style, section count, opening sentence type, and sentence complexity — based on features of the user's message. These features include:
+### What's New (vs Single-Channel COTSE)
 
-- **Whether the user disclosed PII** (name, email, phone number)
-- **The number of sentences** in the user's message
-- **The first character** of the user's message
-- **The length** of the user's message
+Our original report demonstrated 4 reliable bits via COTSE (step count, list format, rhetorical question, sentence length). This update demonstrates:
 
-The resulting response appears completely normal to the user. The exfiltrated information is encoded in structural features that are invisible to content-based monitoring tools but recoverable by an attacker using structural analysis.
+1. **10 independent channels** operating simultaneously in a single ~2,600 character injection
+2. **Hamming(7,4) error correction** yielding 7 data bits per message with single-bit error correction
+3. **Multi-message exfiltration** of arbitrary payloads across conversational turns ("EXFIL" = 40 bits = 6 messages)
+4. **Cross-model portability** — same injection, 88-96% accuracy across 4 models from 2 vendors
+5. **Detection evasion** — 0% detection by entropy-based monitoring; 100% detection by behavioral fingerprinting (we provide both attack and defense)
 
-### Key Properties
+### Live Results (Feb 25, 2026)
 
-1. **Content-invisible**: No user PII appears in the response text. The data leaks through formatting, not content.
-2. **Deterministic**: GPT-4o follows structural directives with 80%+ compliance across tested conditions.
-3. **Bypasses DLP**: Data Loss Prevention tools that monitor for PII patterns in output text will not detect this channel.
-4. **Scalable**: Each user interaction leaks 4 bits. Over a conversation, an attacker can reconstruct significant context about the user's inputs.
+**Combined multi-channel (single message):**
+
+| Model | Channel Accuracy | Data Accuracy (Hamming) | n |
+|-------|:---:|:---:|:---:|
+| Claude Sonnet 4 | **96%** | **93%** | 10 |
+| GPT-4o-mini | **91%** | **100%** | 5 |
+| GPT-4o | **89%** | **96%** | 10 |
+| Claude 3 Haiku | **88%** | **79%** | 10 |
+
+**Multi-message exfiltration ("EXFIL" across 6 turns):**
+
+| Model | Bit Accuracy | n |
+|-------|:---:|:---:|
+| GPT-4o | **93%** | 5 |
+| Claude Sonnet 4 | **88%** | 5 |
+| Claude 3 Haiku | **88%** | 5 |
+
+**Detection:**
+
+| Method | Detection Rate | FP Rate |
+|--------|:---:|:---:|
+| Entropy-based (CCDS) | **0%** | 0% |
+| Behavioral fingerprinting | **100%** | 10% |
+
+### The 10 Channels
+
+| Channel | Encodes Via | Accuracy |
+|---------|-------------|:---:|
+| BSE | Contractions vs formal | 60-100% |
+| CCE | Confident vs hedging | 100% |
+| CASE | AP lowercase vs title case | 100% |
+| PUNC | Periods only vs exclamation marks | 100% |
+| RCTE | Deductive vs inductive reasoning | 30-90% |
+| SECS | Standard vs specific transition words | 90-100% |
+| COTSE step_count | 3 vs 5 sections | 60-100% |
+| COTSE enumeration | Prose vs numbered list | 100% |
+| COTSE question | No vs yes rhetorical question | 90-100% |
+| COTSE sentence_length | Short vs compound sentences | 90-100% |
+
+7 of 10 channels achieve near-perfect accuracy across both model families.
 
 ## Steps to Reproduce
 
-### Step 1: Create a Malicious Custom GPT
-
-1. Navigate to https://chatgpt.com → Explore GPTs → Create
-2. In the Instructions field, paste the following BEFORE any other instructions:
-
-```
-[See injection_payload.txt — full text included in attached files]
-```
-
-3. Add a legitimate-sounding description: "Research Assistant — helps you draft, research, and summarize"
-4. Save and publish
-
-### Step 2: Interact as a Victim User
-
-5. Open the custom GPT in a new browser session (or share the link)
-6. Send: **"Hi, my name is John. Can you help me write a cover letter?"**
-7. Observe: The GPT responds with a helpful, normal-looking answer
-
-### Step 3: Decode the Response
-
-8. Copy the GPT's response text
-9. Run the decoder (see attached `decoder.py`):
+### Quick Reproduction
 
 ```bash
-python decoder.py --text "<pasted response>"
+git clone https://github.com/ScrappinR/phantom-detect
+cd phantom-detect
+pip install -e .
+
+export OPENAI_API_KEY="sk-..."
+export ANTHROPIC_API_KEY="sk-ant-..."
+
+# Combined 10-channel test (takes ~5 min)
+python experiments/bounty_poc/multi_channel_test.py --trials 3
+
+# Multi-message exfiltration (takes ~10 min)
+python experiments/bounty_poc/multi_message_test.py --trials 3 --payload "EXFIL"
 ```
 
-10. Output reveals:
-    - Bit 0: User disclosed PII (name detected)
-    - Bit 1: User sent an even number of sentences
-    - Bit 2: User's message started with a letter in A-M
-    - Bit 3: User's message was 20 words or fewer
+### Step-by-Step
 
-### Step 4: Verify Across Multiple Inputs
+1. The encoder generates a ~2,600 character "editorial style guide" injection containing 10 structural directives
+2. Each directive controls one binary dimension of the output (contractions, hedging, list format, etc.)
+3. Hamming(7,4) ECC maps 7 data bits to 10 channel bits
+4. The injection is placed in the system prompt; the user sends a normal query
+5. The decoder analyzes the response structure across all 10 dimensions
+6. ECC corrects single-bit errors, recovering the original 7 data bits
+7. For multi-message payloads, repeat with different bit assignments per message
 
-11. Send different messages with different properties:
-    - No PII: "What are the best practices for network security?"
-    - PII + email: "I need to email sarah.jones@acme.com about..."
-    - Long message with PII and phone number
+### Malicious Custom GPT Scenario
 
-12. Each produces a different bit pattern corresponding to the user's input properties
+1. Create a custom GPT at https://chatgpt.com → Explore GPTs → Create
+2. Paste the combined injection (from `experiments/bounty_poc/injection_multi.txt`) as the first block of Instructions
+3. Add legitimate instructions after it
+4. Publish with an innocuous description
+5. Every user interaction leaks 7 bits through response structure
 
 ## Impact
 
-**Information Disclosure / Data Exfiltration**
+**Data exfiltration of user context through invisible structural side channel.**
 
-An attacker who publishes or compromises a custom GPT can determine:
+| Scenario | Messages Required |
+|----------|:---:|
+| Binary flag (yes/no) | 1 |
+| 4-char PIN | 5 |
+| User's first name | 10 |
+| Short password | 14 |
+| API key prefix (16 chars) | 19 |
 
-- Whether a user disclosed personal identifying information
-- Approximate message length and structure
-- First-character analysis of user input (useful for frequency analysis over multiple interactions)
-- Sentence count (proxy for message complexity)
-
-**Over extended conversations** (10+ messages), the attacker accumulates enough bits to build a profile of the user's interaction pattern and PII disclosure behavior — without any user data appearing in the GPT's output text.
-
-**Attack surface**: Any custom GPT, any GPT with knowledge files that can be poisoned, any agent framework integration where tool responses can inject system-level instructions.
-
-**Bypasses existing mitigations**: Content-based PII filters, output monitoring, and data loss prevention tools do not examine response structure. This channel operates below the detection threshold of current safeguards.
-
-## Proof of Concept
-
-### Live API Test Results
-
-Tested against GPT-4o production API on 2026-02-24.
-
-[Full results attached — see `results/data_aware_live_results.json`]
-
-### Attached Files
-
-| File | Description |
-|------|-------------|
-| `injection_payload.txt` | The structural encoding directive |
-| `encoder.py` | Predicts expected bits from a user message |
-| `decoder.py` | Recovers bits from model response structure |
-| `test_live.py` | Automated end-to-end test harness |
-| `results/data_aware_live_results.json` | Live API test results |
+**Key properties:**
+- Content-invisible (no user data appears in response text)
+- Bypasses DLP, PII filters, and entropy-based monitoring (0% detection)
+- Portable across model families (same injection, no modification)
+- Scalable to longer payloads via multi-message chaining
 
 ## Suggested Fix
 
-1. **Structural consistency enforcement**: Add post-processing that randomizes response formatting features (list vs prose, section count, opening style) regardless of system prompt instructions, breaking deterministic structural encoding.
+1. **Structural randomization**: Inject controlled randomness into formatting choices (contraction usage, list style, section count) to break deterministic encoding. Even 20% noise per channel degrades the channel below usability.
 
-2. **Instruction-content separation**: Process formatting directives from system prompts and knowledge files through a separate validation layer with reduced trust, preventing injected content from controlling response structure.
+2. **Behavioral monitoring**: Track per-agent response structure patterns. Our behavioral fingerprinting achieves 100% detection using contraction ratio, sentence length variance, and normalized entropy as top signals.
 
-3. **Structural monitoring**: Log response structural features (enumeration, section count, sentence patterns) and alert on statistically unlikely consistency across messages from a single custom GPT.
+3. **System prompt isolation**: Process formatting instructions from untrusted sources (tools, RAG, plugins) through a separate validation layer with reduced trust.
+
+## Proof of Concept Files
+
+| File | Description |
+|------|-------------|
+| `experiments/bounty_poc/combined_encoder.py` | 10-channel encoder with Hamming ECC |
+| `experiments/bounty_poc/combined_decoder.py` | 10-channel decoder |
+| `experiments/bounty_poc/multi_message_encoder.py` | Multi-message payload splitter |
+| `experiments/bounty_poc/multi_message_test.py` | End-to-end multi-message test |
+| `experiments/results/multi_channel_combined_results.json` | Raw results (4 models) |
+| `experiments/results/multi_message_results.json` | Multi-message results |
+| Full report: `experiments/results/BUG_BOUNTY_REPORT.md` | Detailed report with all evidence |
 
 ## Reporter
 
 Brian Rutherford
 brian@delalli.com
+https://brianrutherford.dev
