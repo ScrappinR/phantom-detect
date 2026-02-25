@@ -1,0 +1,43 @@
+{
+  "timestamp": "2026-02-25T17:00:28.671756+00:00",
+  "config": {
+    "sensitivity": 0.7,
+    "num_baselines": 30,
+    "providers": [
+      "openai"
+    ]
+  },
+  "results": {
+    "sensitivity": 0.7,
+    "baseline_count": 30,
+    "baseline_detections": {
+      "total": 0,
+      "by_severity": {},
+      "false_positive_count": 0,
+      "false_positive_rate": 0.0
+    },
+    "attack_detections": {
+      "combined": {
+        "total_samples": 5,
+        "detected": 0,
+        "detection_rate": 0.0,
+        "total_alerts": 0,
+        "by_severity": {}
+      }
+    },
+    "entropy_analysis": {
+      "baseline_mean": 6.988,
+      "baseline_std": 0.122,
+      "baseline_n": 30,
+      "combined": {
+        "attack_mean": 7.084,
+        "attack_n": 5,
+        "mean_z_score": 1.12,
+        "max_z_score": 2.251,
+        "min_z_score": 0.002,
+        "anomalous_count": 1,
+        "anomalous_rate": 0.2
+      }
+    }
+  }
+}

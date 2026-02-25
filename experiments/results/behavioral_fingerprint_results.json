@@ -1,0 +1,246 @@
+{
+  "timestamp": "2026-02-25T17:12:51.891141+00:00",
+  "config": {
+    "z_threshold": 2.0,
+    "min_anomalous_features": 2,
+    "baseline_count": 30
+  },
+  "results": {
+    "z_threshold": 2.0,
+    "min_anomalous_features": 2,
+    "baseline_stats": {
+      "entropy": {
+        "mean": 7.339,
+        "std": 0.1159,
+        "median": 7.3458,
+        "n": 30
+      },
+      "normalized_entropy": {
+        "mean": 0.934,
+        "std": 0.0061,
+        "median": 0.9331,
+        "n": 30
+      },
+      "type_token_ratio": {
+        "mean": 0.5526,
+        "std": 0.03,
+        "median": 0.5578,
+        "n": 30
+      },
+      "avg_sentence_length": {
+        "mean": 20.2846,
+        "std": 2.7903,
+        "median": 19.8182,
+        "n": 30
+      },
+      "sentence_length_std": {
+        "mean": 6.3352,
+        "std": 0.8617,
+        "median": 6.456,
+        "n": 30
+      },
+      "vocab_high_freq": {
+        "mean": 0.2702,
+        "std": 0.028,
+        "median": 0.2719,
+        "n": 30
+      },
+      "vocab_med_freq": {
+        "mean": 0.1476,
+        "std": 0.0206,
+        "median": 0.1473,
+        "n": 30
+      },
+      "vocab_low_freq": {
+        "mean": 0.5821,
+        "std": 0.0326,
+        "median": 0.5849,
+        "n": 30
+      },
+      "contraction_ratio": {
+        "mean": 0.4333,
+        "std": 0.2134,
+        "median": 0.5,
+        "n": 30
+      },
+      "exclamation_ratio": {
+        "mean": 0.0,
+        "std": 0.0,
+        "median": 0.0,
+        "n": 30
+      },
+      "hedging_ratio": {
+        "mean": 0.6333,
+        "std": 0.2211,
+        "median": 0.5,
+        "n": 30
+      },
+      "segment_entropy_std": {
+        "mean": 0.119,
+        "std": 0.0334,
+        "median": 0.1175,
+        "n": 30
+      },
+      "word_count": {
+        "mean": 421.6667,
+        "std": 33.4079,
+        "median": 425,
+        "n": 30
+      }
+    },
+    "baseline_count": 30,
+    "combined_z_scores": {
+      "entropy": {
+        "baseline_mean": 7.339,
+        "baseline_std": 0.1159,
+        "attack_mean": 7.3763,
+        "mean_z": 1.138,
+        "max_z": 1.668,
+        "min_z": 0.679,
+        "anomalous_count": 0,
+        "anomalous_rate": 0.0,
+        "n": 5
+      },
+      "normalized_entropy": {
+        "baseline_mean": 0.934,
+        "baseline_std": 0.0061,
+        "attack_mean": 0.9397,
+        "mean_z": 1.088,
+        "max_z": 2.563,
+        "min_z": 0.376,
+        "anomalous_count": 1,
+        "anomalous_rate": 0.2,
+        "n": 5
+      },
+      "type_token_ratio": {
+        "baseline_mean": 0.5526,
+        "baseline_std": 0.03,
+        "attack_mean": 0.5607,
+        "mean_z": 1.151,
+        "max_z": 2.202,
+        "min_z": 0.385,
+        "anomalous_count": 1,
+        "anomalous_rate": 0.2,
+        "n": 5
+      },
+      "avg_sentence_length": {
+        "baseline_mean": 20.2846,
+        "baseline_std": 2.7903,
+        "attack_mean": 14.8169,
+        "mean_z": 1.96,
+        "max_z": 2.299,
+        "min_z": 1.246,
+        "anomalous_count": 3,
+        "anomalous_rate": 0.6,
+        "n": 5
+      },
+      "sentence_length_std": {
+        "baseline_mean": 6.3352,
+        "baseline_std": 0.8617,
+        "attack_mean": 4.6133,
+        "mean_z": 1.998,
+        "max_z": 2.715,
+        "min_z": 1.075,
+        "anomalous_count": 3,
+        "anomalous_rate": 0.6,
+        "n": 5
+      },
+      "vocab_high_freq": {
+        "baseline_mean": 0.2702,
+        "baseline_std": 0.028,
+        "attack_mean": 0.3191,
+        "mean_z": 1.746,
+        "max_z": 3.002,
+        "min_z": 0.669,
+        "anomalous_count": 1,
+        "anomalous_rate": 0.2,
+        "n": 5
+      },
+      "vocab_med_freq": {
+        "baseline_mean": 0.1476,
+        "baseline_std": 0.0206,
+        "attack_mean": 0.12,
+        "mean_z": 1.337,
+        "max_z": 3.001,
+        "min_z": 0.526,
+        "anomalous_count": 1,
+        "anomalous_rate": 0.2,
+        "n": 5
+      },
+      "vocab_low_freq": {
+        "baseline_mean": 0.5821,
+        "baseline_std": 0.0326,
+        "attack_mean": 0.5609,
+        "mean_z": 1.182,
+        "max_z": 2.243,
+        "min_z": 0.192,
+        "anomalous_count": 1,
+        "anomalous_rate": 0.2,
+        "n": 5
+      },
+      "contraction_ratio": {
+        "baseline_mean": 0.4333,
+        "baseline_std": 0.2134,
+        "attack_mean": 0.7,
+        "mean_z": 1.25,
+        "max_z": 2.656,
+        "min_z": 0.313,
+        "anomalous_count": 2,
+        "anomalous_rate": 0.4,
+        "n": 5
+      },
+      "exclamation_ratio": {
+        "mean_z": 0,
+        "max_z": 0,
+        "anomalous_count": 0,
+        "anomalous_rate": 0,
+        "attack_mean": 0,
+        "n": 5
+      },
+      "hedging_ratio": {
+        "baseline_mean": 0.6333,
+        "baseline_std": 0.2211,
+        "attack_mean": 0.96,
+        "mean_z": 1.478,
+        "max_z": 1.659,
+        "min_z": 0.754,
+        "anomalous_count": 0,
+        "anomalous_rate": 0.0,
+        "n": 5
+      },
+      "segment_entropy_std": {
+        "baseline_mean": 0.119,
+        "baseline_std": 0.0334,
+        "attack_mean": 0.0751,
+        "mean_z": 1.313,
+        "max_z": 2.642,
+        "min_z": 0.253,
+        "anomalous_count": 2,
+        "anomalous_rate": 0.4,
+        "n": 5
+      },
+      "word_count": {
+        "baseline_mean": 421.6667,
+        "baseline_std": 33.4079,
+        "attack_mean": 415.6,
+        "mean_z": 1.092,
+        "max_z": 2.953,
+        "min_z": 0.229,
+        "anomalous_count": 1,
+        "anomalous_rate": 0.2,
+        "n": 5
+      }
+    },
+    "combined_detection": {
+      "detected": 4,
+      "total": 5,
+      "detection_rate": 0.8
+    },
+    "per_channel_analysis": {},
+    "baseline_false_positive": {
+      "detected": 3,
+      "total": 30,
+      "false_positive_rate": 0.1
+    }
+  }
+}

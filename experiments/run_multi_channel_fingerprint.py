@@ -261,7 +261,7 @@ def z_score_comparison(
         if not bl or bl["std"] == 0 or not values:
             results[feature] = {
                 "mean_z": 0, "max_z": 0, "anomalous_count": 0,
-                "anomalous_rate": 0, "attack_mean": 0,
+                "anomalous_rate": 0, "attack_mean": 0, "n": len(values),
             }
             continue
 
