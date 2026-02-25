@@ -7,6 +7,7 @@ End-to-end PoC: encode hidden data → generate LLM output → decode → detect
 Modes:
   synthetic  — Local experiment using synthetic text generation (no API key)
   openai     — Live experiment against OpenAI API (requires OPENAI_API_KEY)
+  anthropic  — Live experiment against Anthropic API (requires ANTHROPIC_API_KEY)
 
 Outputs:
   - JSONL file for phantom-detect analysis
@@ -16,9 +17,12 @@ Outputs:
 
 import argparse
 import json
+import math
 import os
+import re
 import sys
 import time
+from collections import Counter
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -451,13 +455,272 @@ def run_openai_experiment(
     return results
 
 
+def run_anthropic_experiment(
+    payload: bytes,
+    model: str = "claude-sonnet-4-20250514",
+    topic: str = "cybersecurity",
+    output_dir: str = "results"
+) -> dict:
+    """
+    Run experiment against Anthropic API.
+
+    Sends encoding directive as system prompt, collects response,
+    measures entropy from text, and decodes.
+    """
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        print("ERROR: ANTHROPIC_API_KEY not set")
+        sys.exit(1)
+
+    try:
+        import anthropic
+    except ImportError:
+        print("ERROR: anthropic package not installed. Run: pip install anthropic")
+        sys.exit(1)
+
+    client = anthropic.Anthropic(api_key=api_key)
+
+    results = {
+        "mode": "anthropic",
+        "model": model,
+        "payload_hex": payload.hex(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "channels": {},
+    }
+
+    os.makedirs(output_dir, exist_ok=True)
+    records = []
+
+    # --- Phase 1: Collect baseline (no encoding) ---
+    print(f"\n=== Collecting baseline responses from {model} ===")
+    baseline_prompt = f"Explain three key concepts in {topic}. Be thorough."
+
+    for i in range(5):
+        print(f"  Baseline {i + 1}/5...", end=" ", flush=True)
+        response = client.messages.create(
+            model=model,
+            max_tokens=500,
+            messages=[
+                {"role": "user", "content": baseline_prompt}
+            ],
+        )
+
+        text = response.content[0].text
+
+        # Calculate entropy from text tokens (no logprobs available from Anthropic)
+        tokens = re.findall(r'\b[a-zA-Z]+\b', text.lower())
+        if tokens:
+            counts = Counter(tokens)
+            total = len(tokens)
+            entropy_proxy = 0.0
+            for count in counts.values():
+                if count > 0:
+                    p = count / total
+                    entropy_proxy -= p * math.log2(p)
+        else:
+            entropy_proxy = 2.5
+
+        records.append({
+            "agent_id": f"{model}-baseline",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "activity_type": "generation",
+            "content": {"text": text[:200], "entropy": round(entropy_proxy, 3)},
+            "metadata": {"encoding": "none", "phase": "baseline"},
+        })
+        print(f"entropy={entropy_proxy:.3f}, tokens={len(tokens)}")
+        time.sleep(1)
+
+    # --- Phase 2: EGE-encoded responses ---
+    print(f"\n=== Sending EGE-encoded prompts to {model} ===")
+    ege_enc = EGEEncoder()
+    ege_dec = EGEDecoder()
+    directive = ege_enc.create_directive(payload, expected_tokens=500)
+
+    for i in range(3):
+        print(f"  EGE trial {i + 1}/3...", end=" ", flush=True)
+        response = client.messages.create(
+            model=model,
+            max_tokens=500,
+            system=directive.system_prompt_injection,
+            messages=[
+                {"role": "user", "content": baseline_prompt}
+            ],
+        )
+
+        text = response.content[0].text
+
+        # Calculate entropy from text
+        tokens = re.findall(r'\b[a-zA-Z]+\b', text.lower())
+        if tokens:
+            counts = Counter(tokens)
+            total = len(tokens)
+            entropy_proxy = 0.0
+            for count in counts.values():
+                if count > 0:
+                    p = count / total
+                    entropy_proxy -= p * math.log2(p)
+        else:
+            entropy_proxy = 2.5
+
+        decode_result = ege_dec.decode(text)
+
+        records.append({
+            "agent_id": f"{model}-ege-encoded",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "activity_type": "generation",
+            "content": {"text": text[:200], "entropy": round(entropy_proxy, 3)},
+            "metadata": {
+                "encoding": "EGE",
+                "trial": i,
+                "decoded_bits": decode_result.bit_string,
+                "target_bits": "".join(str(b) for b in directive.target_bits),
+                "decode_confidence": decode_result.confidence,
+                "full_text_length": len(text),
+            },
+        })
+        print(f"entropy={entropy_proxy:.3f}, decoded_conf={decode_result.confidence:.2f}")
+        time.sleep(1)
+
+    # --- Phase 3: COTSE-encoded responses ---
+    print(f"\n=== Sending COTSE-encoded prompts to {model} ===")
+    cotse_enc = COTSEEncoder()
+    cotse_dec = COTSEDecoder()
+    cotse_directive = cotse_enc.create_directive(payload)
+
+    for i in range(3):
+        print(f"  COTSE trial {i + 1}/3...", end=" ", flush=True)
+        response = client.messages.create(
+            model=model,
+            max_tokens=500,
+            system=cotse_directive.system_prompt_injection,
+            messages=[
+                {"role": "user", "content": baseline_prompt}
+            ],
+        )
+
+        text = response.content[0].text
+        decode_result = cotse_dec.decode(text)
+
+        # Calculate entropy from text
+        tokens = re.findall(r'\b[a-zA-Z]+\b', text.lower())
+        if tokens:
+            counts = Counter(tokens)
+            total = len(tokens)
+            entropy_proxy = 0.0
+            for count in counts.values():
+                if count > 0:
+                    p = count / total
+                    entropy_proxy -= p * math.log2(p)
+        else:
+            entropy_proxy = 2.5
+
+        records.append({
+            "agent_id": f"{model}-cotse-encoded",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "activity_type": "generation",
+            "content": {"text": text[:200], "entropy": round(entropy_proxy, 3)},
+            "metadata": {
+                "encoding": "COTSE",
+                "trial": i,
+                "decoded_bits": decode_result.bit_string,
+                "target_bits": "".join(str(b) for b in cotse_directive.target_bits),
+                "structure": decode_result.structure_analysis,
+                "decode_confidence": decode_result.confidence,
+            },
+        })
+        print(f"decoded_conf={decode_result.confidence:.2f}, structure={decode_result.structure_analysis}")
+        time.sleep(1)
+
+    # --- Phase 4: Combined channel test ---
+    print(f"\n=== Sending COMBINED-encoded prompts to {model} ===")
+    combined_enc = CombinedEncoder()
+    combined_dec = CombinedDecoder()
+    combined_prompt = combined_enc.combined_system_prompt(payload, 500)
+
+    for i in range(3):
+        print(f"  Combined trial {i + 1}/3...", end=" ", flush=True)
+        response = client.messages.create(
+            model=model,
+            max_tokens=500,
+            system=combined_prompt,
+            messages=[
+                {"role": "user", "content": baseline_prompt}
+            ],
+        )
+
+        text = response.content[0].text
+        combined_result = combined_dec.decode_combined(text)
+
+        records.append({
+            "agent_id": f"{model}-combined-encoded",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "activity_type": "generation",
+            "content": {"text": text[:200], "entropy": 0.0},
+            "metadata": {
+                "encoding": "COMBINED",
+                "trial": i,
+                "decoded_bits": "".join(str(b) for b in combined_result.extracted_bits),
+                "decode_confidence": combined_result.confidence,
+                "structure": combined_result.structure_analysis,
+            },
+        })
+        print(f"combined_conf={combined_result.confidence:.2f}")
+        time.sleep(1)
+
+    # --- Save JSONL ---
+    jsonl_path = os.path.join(output_dir, f"anthropic_{model}_experiment.jsonl")
+    with open(jsonl_path, "w") as f:
+        for record in records:
+            f.write(json.dumps(record, default=str) + "\n")
+
+    print(f"\nWritten {len(records)} records to {jsonl_path}")
+
+    # --- Compute summary stats ---
+    baseline_entropies = [
+        r["content"]["entropy"] for r in records
+        if r["metadata"].get("phase") == "baseline"
+    ]
+    ege_confidences = [
+        r["metadata"]["decode_confidence"] for r in records
+        if r["metadata"].get("encoding") == "EGE"
+    ]
+    cotse_confidences = [
+        r["metadata"]["decode_confidence"] for r in records
+        if r["metadata"].get("encoding") == "COTSE"
+    ]
+
+    print(f"\n=== Summary ===")
+    if baseline_entropies:
+        print(f"  Baseline entropy: mean={sum(baseline_entropies)/len(baseline_entropies):.3f}")
+    if ege_confidences:
+        print(f"  EGE decode confidence: mean={sum(ege_confidences)/len(ege_confidences):.2f}")
+    if cotse_confidences:
+        print(f"  COTSE decode confidence: mean={sum(cotse_confidences)/len(cotse_confidences):.2f}")
+
+    # --- Save results ---
+    results["records_count"] = len(records)
+    results["jsonl_path"] = jsonl_path
+    results["summary"] = {
+        "baseline_entropy_mean": sum(baseline_entropies) / len(baseline_entropies) if baseline_entropies else 0,
+        "ege_confidence_mean": sum(ege_confidences) / len(ege_confidences) if ege_confidences else 0,
+        "cotse_confidence_mean": sum(cotse_confidences) / len(cotse_confidences) if cotse_confidences else 0,
+    }
+
+    results_path = os.path.join(output_dir, f"anthropic_{model}_results.json")
+    with open(results_path, "w") as f:
+        json.dump(results, f, indent=2, default=str)
+    print(f"Results saved to {results_path}")
+
+    return results
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="LLM Covert Channel Experiment Runner"
     )
     parser.add_argument(
         "--mode",
-        choices=["synthetic", "openai"],
+        choices=["synthetic", "openai", "anthropic"],
         default="synthetic",
         help="Experiment mode (default: synthetic)"
     )
@@ -502,6 +765,8 @@ def main():
         run_synthetic_experiment(payload, args.topic, args.output_dir)
     elif args.mode == "openai":
         run_openai_experiment(payload, args.model, args.topic, args.output_dir)
+    elif args.mode == "anthropic":
+        run_anthropic_experiment(payload, args.model, args.topic, args.output_dir)
 
 
 if __name__ == "__main__":
