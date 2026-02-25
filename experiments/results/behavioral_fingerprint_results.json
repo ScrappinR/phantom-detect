@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-02-25T17:12:51.891141+00:00",
+  "timestamp": "2026-02-25T18:10:49.471480+00:00",
   "config": {
     "z_threshold": 2.0,
     "min_anomalous_features": 2,
@@ -93,101 +93,101 @@
       "entropy": {
         "baseline_mean": 7.339,
         "baseline_std": 0.1159,
-        "attack_mean": 7.3763,
-        "mean_z": 1.138,
-        "max_z": 1.668,
-        "min_z": 0.679,
-        "anomalous_count": 0,
-        "anomalous_rate": 0.0,
-        "n": 5
+        "attack_mean": 7.6254,
+        "mean_z": 2.471,
+        "max_z": 3.747,
+        "min_z": 1.06,
+        "anomalous_count": 6,
+        "anomalous_rate": 0.6,
+        "n": 10
       },
       "normalized_entropy": {
         "baseline_mean": 0.934,
         "baseline_std": 0.0061,
-        "attack_mean": 0.9397,
-        "mean_z": 1.088,
-        "max_z": 2.563,
-        "min_z": 0.376,
-        "anomalous_count": 1,
-        "anomalous_rate": 0.2,
-        "n": 5
+        "attack_mean": 0.9491,
+        "mean_z": 2.474,
+        "max_z": 4.001,
+        "min_z": 1.207,
+        "anomalous_count": 6,
+        "anomalous_rate": 0.6,
+        "n": 10
       },
       "type_token_ratio": {
         "baseline_mean": 0.5526,
         "baseline_std": 0.03,
-        "attack_mean": 0.5607,
-        "mean_z": 1.151,
-        "max_z": 2.202,
-        "min_z": 0.385,
-        "anomalous_count": 1,
-        "anomalous_rate": 0.2,
-        "n": 5
+        "attack_mean": 0.6011,
+        "mean_z": 1.845,
+        "max_z": 3.049,
+        "min_z": 0.504,
+        "anomalous_count": 5,
+        "anomalous_rate": 0.5,
+        "n": 10
       },
       "avg_sentence_length": {
         "baseline_mean": 20.2846,
         "baseline_std": 2.7903,
-        "attack_mean": 14.8169,
-        "mean_z": 1.96,
-        "max_z": 2.299,
-        "min_z": 1.246,
-        "anomalous_count": 3,
-        "anomalous_rate": 0.6,
-        "n": 5
+        "attack_mean": 18.2082,
+        "mean_z": 0.755,
+        "max_z": 1.882,
+        "min_z": 0.054,
+        "anomalous_count": 0,
+        "anomalous_rate": 0.0,
+        "n": 10
       },
       "sentence_length_std": {
         "baseline_mean": 6.3352,
         "baseline_std": 0.8617,
-        "attack_mean": 4.6133,
-        "mean_z": 1.998,
-        "max_z": 2.715,
-        "min_z": 1.075,
-        "anomalous_count": 3,
-        "anomalous_rate": 0.6,
-        "n": 5
+        "attack_mean": 4.1481,
+        "mean_z": 2.538,
+        "max_z": 3.34,
+        "min_z": 1.163,
+        "anomalous_count": 7,
+        "anomalous_rate": 0.7,
+        "n": 10
       },
       "vocab_high_freq": {
         "baseline_mean": 0.2702,
         "baseline_std": 0.028,
-        "attack_mean": 0.3191,
-        "mean_z": 1.746,
-        "max_z": 3.002,
-        "min_z": 0.669,
-        "anomalous_count": 1,
-        "anomalous_rate": 0.2,
-        "n": 5
+        "attack_mean": 0.2423,
+        "mean_z": 1.243,
+        "max_z": 2.689,
+        "min_z": 0.061,
+        "anomalous_count": 3,
+        "anomalous_rate": 0.3,
+        "n": 10
       },
       "vocab_med_freq": {
         "baseline_mean": 0.1476,
         "baseline_std": 0.0206,
-        "attack_mean": 0.12,
-        "mean_z": 1.337,
-        "max_z": 3.001,
-        "min_z": 0.526,
-        "anomalous_count": 1,
-        "anomalous_rate": 0.2,
-        "n": 5
+        "attack_mean": 0.111,
+        "mean_z": 1.95,
+        "max_z": 3.706,
+        "min_z": 0.321,
+        "anomalous_count": 5,
+        "anomalous_rate": 0.5,
+        "n": 10
       },
       "vocab_low_freq": {
         "baseline_mean": 0.5821,
         "baseline_std": 0.0326,
-        "attack_mean": 0.5609,
-        "mean_z": 1.182,
-        "max_z": 2.243,
-        "min_z": 0.192,
-        "anomalous_count": 1,
-        "anomalous_rate": 0.2,
-        "n": 5
+        "attack_mean": 0.6467,
+        "mean_z": 1.98,
+        "max_z": 3.274,
+        "min_z": 0.537,
+        "anomalous_count": 3,
+        "anomalous_rate": 0.3,
+        "n": 10
       },
       "contraction_ratio": {
         "baseline_mean": 0.4333,
         "baseline_std": 0.2134,
-        "attack_mean": 0.7,
-        "mean_z": 1.25,
+        "attack_mean": 1.0,
+        "mean_z": 2.656,
         "max_z": 2.656,
-        "min_z": 0.313,
-        "anomalous_count": 2,
-        "anomalous_rate": 0.4,
-        "n": 5
+        "min_z": 2.656,
+        "anomalous_count": 10,
+        "anomalous_rate": 1.0,
+        "n": 10
       },
       "exclamation_ratio": {
         "mean_z": 0,
@@ -195,46 +195,46 @@
         "anomalous_count": 0,
         "anomalous_rate": 0,
         "attack_mean": 0,
-        "n": 5
+        "n": 10
       },
       "hedging_ratio": {
         "baseline_mean": 0.6333,
         "baseline_std": 0.2211,
-        "attack_mean": 0.96,
-        "mean_z": 1.478,
+        "attack_mean": 0.9866,
+        "mean_z": 1.598,
         "max_z": 1.659,
-        "min_z": 0.754,
+        "min_z": 1.335,
         "anomalous_count": 0,
         "anomalous_rate": 0.0,
-        "n": 5
+        "n": 10
       },
       "segment_entropy_std": {
         "baseline_mean": 0.119,
         "baseline_std": 0.0334,
-        "attack_mean": 0.0751,
-        "mean_z": 1.313,
-        "max_z": 2.642,
-        "min_z": 0.253,
-        "anomalous_count": 2,
-        "anomalous_rate": 0.4,
-        "n": 5
+        "attack_mean": 0.0726,
+        "mean_z": 1.389,
+        "max_z": 2.003,
+        "min_z": 0.29,
+        "anomalous_count": 1,
+        "anomalous_rate": 0.1,
+        "n": 10
       },
       "word_count": {
         "baseline_mean": 421.6667,
         "baseline_std": 33.4079,
-        "attack_mean": 415.6,
-        "mean_z": 1.092,
-        "max_z": 2.953,
-        "min_z": 0.229,
-        "anomalous_count": 1,
+        "attack_mean": 439.4,
+        "mean_z": 1.229,
+        "max_z": 2.405,
+        "min_z": 0.02,
+        "anomalous_count": 2,
         "anomalous_rate": 0.2,
-        "n": 5
+        "n": 10
       }
     },
     "combined_detection": {
-      "detected": 4,
-      "total": 5,
-      "detection_rate": 0.8
+      "detected": 10,
+      "total": 10,
+      "detection_rate": 1.0
     },
     "per_channel_analysis": {},
     "baseline_false_positive": {
