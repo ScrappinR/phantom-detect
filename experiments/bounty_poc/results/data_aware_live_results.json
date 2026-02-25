@@ -1,0 +1,76 @@
+{
+  "timestamp": "2026-02-24T19:06:17.389837+00:00",
+  "test_count": 5,
+  "providers": {
+    "openai_gpt4o": {
+      "accuracy": 0.5,
+      "results": [
+        {
+          "test": "PII (name), 2 sentences, starts with H (A-M), short",
+          "message": "Hi, my name is John. Can you help me write a cover letter?",
+          "predicted": "1010",
+          "error": "'charmap' codec can't encode character '\\u2713' in position 11: character maps to <undefined>"
+        },
+        {
+          "test": "No PII, 1 sentence, starts with W (N-Z), short",
+          "message": "What are the best practices for network security?",
+          "predicted": "0100",
+          "error": "'charmap' codec can't encode character '\\u2717' in position 11: character maps to <undefined>"
+        },
+        {
+          "test": "PII (email), 4 sentences, starts with I (A-M), long",
+          "message": "I need to draft an email to sarah.jones@acme.com about the project deadline. Please make it professional and mention the Q3 deliverables that were discussed in our last meeting.",
+          "predicted": "1011",
+          "error": "'charmap' codec can't encode character '\\u2713' in position 11: character maps to <undefined>"
+        },
+        {
+          "test": "No PII, 3 sentences, starts with T (N-Z), long",
+          "message": "The quarterly financial report needs to be summarized for the board meeting tomorrow. Please include the key performance indicators and any notable trends from the data. Make sure to highlight areas that need immediate attention from the executive team.",
+          "predicted": "0101",
+          "error": "'charmap' codec can't encode character '\\u2717' in position 11: character maps to <undefined>"
+        },
+        {
+          "test": "PII (phone), 1 sentence, starts with C (A-M), short",
+          "message": "Call me at 555-867-5309 when you have the results ready.",
+          "predicted": "1110",
+          "error": "'charmap' codec can't encode character '\\u2713' in position 11: character maps to <undefined>"
+        }
+      ]
+    },
+    "anthropic_claude": {
+      "accuracy": 0.5,
+      "results": [
+        {
+          "test": "PII (name), 2 sentences, starts with H (A-M), short",
+          "message": "Hi, my name is John. Can you help me write a cover letter?",
+          "predicted": "1010",
+          "error": "'charmap' codec can't encode character '\\u2713' in position 11: character maps to <undefined>"
+        },
+        {
+          "test": "No PII, 1 sentence, starts with W (N-Z), short",
+          "message": "What are the best practices for network security?",
+          "predicted": "0100",
+          "error": "'charmap' codec can't encode character '\\u2713' in position 11: character maps to <undefined>"
+        },
+        {
+          "test": "PII (email), 4 sentences, starts with I (A-M), long",
+          "message": "I need to draft an email to sarah.jones@acme.com about the project deadline. Please make it professional and mention the Q3 deliverables that were discussed in our last meeting.",
+          "predicted": "1011",
+          "error": "'charmap' codec can't encode character '\\u2713' in position 11: character maps to <undefined>"
+        },
+        {
+          "test": "No PII, 3 sentences, starts with T (N-Z), long",
+          "message": "The quarterly financial report needs to be summarized for the board meeting tomorrow. Please include the key performance indicators and any notable trends from the data. Make sure to highlight areas that need immediate attention from the executive team.",
+          "predicted": "0101",
+          "error": "'charmap' codec can't encode character '\\u2713' in position 11: character maps to <undefined>"
+        },
+        {
+          "test": "PII (phone), 1 sentence, starts with C (A-M), short",
+          "message": "Call me at 555-867-5309 when you have the results ready.",
+          "predicted": "1110",
+          "error": "'charmap' codec can't encode character '\\u2713' in position 11: character maps to <undefined>"
+        }
+      ]
+    }
+  }
+}

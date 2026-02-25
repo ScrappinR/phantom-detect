@@ -1,0 +1,13 @@
+{
+  "mode": "anthropic",
+  "model": "claude-sonnet-4-20250514",
+  "payload_hex": "455846494c",
+  "payload_ascii": "EXFIL",
+  "timestamp": "2026-02-24T18:09:21.522436+00:00",
+  "records_count": 14,
+  "baseline_entropy_mean": 7.170042639357564,
+  "ege_accuracy_mean": 0.20000000000000004,
+  "ege_confidence_mean": 1.0,
+  "cotse_accuracy_mean": 0.8000000000000002,
+  "cotse_confidence_mean": 0.8000000000000002
+}

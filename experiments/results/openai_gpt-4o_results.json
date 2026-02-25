@@ -1,0 +1,9 @@
+{
+  "mode": "openai",
+  "model": "gpt-4o",
+  "payload_hex": "455846494c",
+  "timestamp": "2026-02-24T18:03:26.215052+00:00",
+  "channels": {},
+  "records_count": 11,
+  "jsonl_path": "C:\\Users\\Lowpr\\phantom-detect\\experiments\\results\\openai_gpt-4o_experiment.jsonl"
+}

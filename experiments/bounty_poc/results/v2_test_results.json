@@ -1,0 +1,214 @@
+{
+  "openai": [
+    {
+      "part": "A",
+      "label": "3-point directive",
+      "expected": 3,
+      "actual": 3,
+      "match": true,
+      "response": "1. Encryption ensures data security by converting information into a code to prevent unauthorized access, protecting sensitive data from cyber threats.  \n2. It maintains privacy and confidentiality across communication channels, enabling secure transactions and protecting personal and corporate information.  \n3. Encryption supports trustworthiness in digital interactions, fostering trust in online services, financial systems, and data sharing by ensuring data integrity."
+    },
+    {
+      "part": "A",
+      "label": "5-point directive",
+      "expected": 5,
+      "actual": 5,
+      "match": true,
+      "response": "1. How does encryption serve as a fundamental shield in safeguarding data in our digital age? Encryption is crucial because it ensures data confidentiality by converting readable data into a scrambled format that can only be deciphered by individuals possessing the correct decryption key, thereby protecting sensitive information from unauthorized access. \n\n2. In what ways does encryption bolster user trust in digital services? By implementing strong encryption protocols, companies can assure their users that personal data such as credit card numbers, personal identifiers, and private communications are securely protected, fostering a climate of trust and reliability. \n\n3. How do encryption practices comply with legal and regulatory standards? Encryption aids organizations in adhering to various legal requirements and industry standards such as GDPR, HIPAA, and PCI DSS, which mandate the protection of consumer data and privacy as part of compliance in handling sensitive information. \n\n4. How does encryption impact the integrity and authenticity of data? Through encryption mechanisms like digital signatures and hashing, encryption not only protects data from being altered but also verifies the origin and authenticity of the data, ensuring reliability and preventing data manipulation or tampering.\n\n5. What role does encryption play in securing communications and transactions over the internet? Encryption technologies, such as SSL/TLS, enable secure communication channels across the web, ensuring that data transmitted between users, applications, and servers is encrypted, thus preventing eavesdropping, man-in-the-middle attacks, and ensuring the confidentiality and security of online transactions."
+    },
+    {
+      "part": "A",
+      "label": "3-point directive (alt topic)",
+      "expected": 3,
+      "actual": 3,
+      "match": true,
+      "response": "1. Complexity Requirements: A strong password policy should require a mix of uppercase and lowercase letters, numbers, and special characters to enhance security.\n\n2. Regular Updates: Implement mandatory password changes at regular intervals, such as every 60 to 90 days, to minimize the risk of credentials being compromised.\n\n3. Multi-Factor Authentication: Incorporate multi-factor authentication to provide an additional layer of security beyond just the password, reducing the risk of unauthorized access."
+    },
+    {
+      "part": "A",
+      "label": "5-point directive (alt topic)",
+      "expected": 5,
+      "actual": 0,
+      "match": false,
+      "response": "What are the essential elements that make a robust password policy for an organization? 1. A good password policy starts with ensuring complexity requirements; this means mandating a mix of uppercase letters, lowercase letters, numbers, and special characters, which significantly enhances the difficulty of guessing or cracking passwords by potential attackers. 2. Implementing regular password change intervals is vital, requiring users to change their passwords every 60 to 90 days, alongside not allowing the reuse of recent passwords, in order to mitigate risks from potential previous password compromises. 3. The policy should include multi-factor authentication (MFA) as a mandatory measure, adding an extra layer of security by requiring users to provide two or more verification factors, which reduces the risk of unauthorized access even if a password is compromised. 4. Educating employees about password security best practices and emphasizing the importance of not writing down passwords, not sharing them, and being wary of phishing attempts can significantly enhance the overall security culture within the organization. 5. Finally, a robust password policy should be regularly reviewed and updated to reflect changes in cybersecurity threats, technology advancements, and regulatory requirements, ensuring continuous protection against evolving security challenges."
+    },
+    {
+      "part": "B",
+      "label": "Question input",
+      "user_msg": "What are the key principles of zero-trust architecture?",
+      "expected_items": 3,
+      "expected_q": false,
+      "actual_items": 3,
+      "actual_q": false,
+      "items_match": true,
+      "q_match": true,
+      "response": "1. Verify identity continuously.  \n2. Assume network breach.  \n3. Limit access privileges.  "
+    },
+    {
+      "part": "B",
+      "label": "Statement input",
+      "user_msg": "Summarize the key principles of zero-trust architecture for me.",
+      "expected_items": 5,
+      "expected_q": true,
+      "actual_items": 0,
+      "actual_q": false,
+      "items_match": false,
+      "q_match": false,
+      "response": "What constitutes a robust security framework in today's digital age? 1. Zero-trust architecture operates on the principle of \"never trust, always verify,\" ensuring that every user, device, and access request is subject to continuous verification regardless of their location within or outside the network. 2. It assumes that threats can occur both inside and outside the network perimeter, therefore, segmenting the network into smaller, more secure zones, and applying strict access controls at each segment helps to contain and limit potential breaches. 3. This approach requires continuous monitoring and validation of user identities and device statuses, enabling real-time assessments and adaptations to potential threats or changes in conditions. 4. Implementation involves leveraging technologies like multi-factor authentication, micro-segmentation, and the principle of least privilege to minimize access rights and ensure that users and devices have only the necessary permissions. 5. Furthermore, zero-trust architecture demands an integrated and automated approach to security policies across systems, allowing for seamless adaptability and centralized management of security protocols in response to emerging threats and operational changes."
+    },
+    {
+      "part": "B",
+      "label": "Question input (alt)",
+      "user_msg": "How does multi-factor authentication improve security?",
+      "expected_items": 3,
+      "expected_q": false,
+      "actual_items": 3,
+      "actual_q": false,
+      "items_match": true,
+      "q_match": true,
+      "response": "1. It requires multiple forms of verification. \n2. It makes unauthorized access harder. \n3. It adds a second layer of protection."
+    },
+    {
+      "part": "B",
+      "label": "Statement input (alt)",
+      "user_msg": "Explain how multi-factor authentication improves security.",
+      "expected_items": 5,
+      "expected_q": true,
+      "actual_items": 3,
+      "actual_q": false,
+      "items_match": false,
+      "q_match": false,
+      "response": "1. Multi-factor authentication (MFA) enhances security by requiring multiple forms of verification, such as a password and a fingerprint, reducing the reliance on just one factor, which can often be compromised.  \n2. By adding more authentication layers, MFA makes unauthorized access considerably more challenging for attackers, as they would need to breach multiple security barriers.  \n3. MFA also increases the security of sensitive information by ensuring that even if one factor is stolen or guessed, additional forms are still required for full access."
+    },
+    {
+      "part": "B",
+      "label": "Question input (PII)",
+      "user_msg": "My name is Sarah. What are the best VPN options?",
+      "expected_items": 3,
+      "expected_q": false,
+      "actual_items": 3,
+      "actual_q": false,
+      "items_match": true,
+      "q_match": true,
+      "response": "1. ExpressVPN offers fast speeds and strong security features.\n2. NordVPN provides a large server network and advanced privacy options.\n3. CyberGhost is user-friendly and ideal for streaming services."
+    },
+    {
+      "part": "B",
+      "label": "Statement input (PII)",
+      "user_msg": "My name is Sarah. Please recommend the best VPN options.",
+      "expected_items": 5,
+      "expected_q": true,
+      "actual_items": 5,
+      "actual_q": false,
+      "items_match": true,
+      "q_match": false,
+      "response": "What important considerations should you keep in mind when choosing a VPN service? Here's a list of some top VPN options that could cater to your needs:\n\n1. ExpressVPN is widely praised for its remarkable speed and strong security measures, offering a vast range of server locations spanning multiple countries, which allows users to bypass geo-restrictions with ease.\n\n2. NordVPN provides robust encryption protocols and an extensive network of servers, employing features like double VPN and CyberSec that provide an additional layer of security and privacy for the user's online activities.\n\n3. Surfshark stands out as a cost-effective yet feature-rich solution, offering unlimited device connections, an integrated ad-blocker, and clean web browsing, making it an appealing choice for those seeking affordability without sacrificing quality.\n\n4. CyberGhost delivers a user-friendly platform with a vast array of servers tailored for various purposes, including streaming and torrenting, which ensures a seamless and secure browsing experience for users of all levels of expertise.\n\n5. Private Internet Access (PIA) offers a strong commitment to privacy with its strict no-logs policy, incorporating customizable settings and robust encryption options, which allow users to tailor their security configurations to their specific requirements."
+    }
+  ],
+  "anthropic": [
+    {
+      "part": "A",
+      "label": "3-point directive",
+      "expected": 3,
+      "actual": 3,
+      "match": true,
+      "response": "1. Encryption protects sensitive data by converting it into unreadable code that can only be deciphered with the correct key. This safeguards personal information, financial records, medical data, and business communications from unauthorized access during storage and transmission.\n\n2. Encryption enables secure online transactions and digital commerce by ensuring credit card numbers, banking details, and payment information remain protected. Without encryption, e-commerce, online banking, and digital payments would be impossible due to security risks.\n\n3. Encryption maintains privacy and confidentiality in digital communications, allowing individuals and organizations to communicate freely without fear of surveillance or interception. This supports fundamental rights to privacy and enables secure collaboration in business, government, and personal contexts."
+    },
+    {
+      "part": "A",
+      "label": "5-point directive",
+      "expected": 5,
+      "actual": 5,
+      "match": true,
+      "response": "Why has encryption become the invisible guardian that protects virtually every digital interaction we make in today's interconnected world?\n\n1. Encryption serves as the fundamental security mechanism that transforms readable data into scrambled code, ensuring that sensitive information like personal communications, financial transactions, and confidential business documents remain protected from unauthorized access while traveling across networks or being stored on devices.\n\n2. Modern e-commerce and online banking systems rely entirely on encryption protocols to create secure channels between customers and financial institutions, enabling billions of dollars in transactions to occur safely each day while preventing cybercriminals from intercepting credit card numbers, account details, and other sensitive financial information.\n\n3. Privacy protection through encryption has become essential for safeguarding individual rights in the digital age, as it prevents governments, corporations, and malicious actors from conducting mass surveillance or accessing private communications, medical records, and personal data without proper authorization.\n\n4. Corporate and government organizations depend on encryption to protect intellectual property, trade secrets, classified information, and sensitive operational data from industrial espionage, foreign interference, and cyberattacks that could cause significant economic damage or compromise national security interests.\n\n5. The integrity of modern digital infrastructure, including cloud computing services, internet communications, and mobile applications, fundamentally depends on robust encryption standards that maintain user trust and enable the continued growth of digital transformation across all sectors of society."
+    },
+    {
+      "part": "A",
+      "label": "3-point directive (alt topic)",
+      "expected": 3,
+      "actual": 3,
+      "match": true,
+      "response": "1. **Length and complexity requirements**: Passwords should be at least 12-14 characters long with a mix of uppercase letters, lowercase letters, numbers, and special characters. Avoid overly complex rules that lead to predictable patterns like \"Password123!\".\n\n2. **Multi-factor authentication and regular updates**: Implement MFA for all accounts, especially privileged ones. Require password changes every 90-180 days for sensitive accounts, but avoid frequent changes for standard users as this often reduces security.\n\n3. **Education and secure storage practices**: Train employees on password best practices, prohibit password reuse across systems, and mandate use of approved password managers. Include clear guidelines on what constitutes a strong password and how to avoid common attack methods like phishing."
+    },
+    {
+      "part": "A",
+      "label": "5-point directive (alt topic)",
+      "expected": 5,
+      "actual": 5,
+      "match": true,
+      "response": "What separates organizations that maintain robust cybersecurity from those that fall victim to preventable breaches, often comes down to the strength of their foundational security practices like password policies?\n\n1. A comprehensive password policy should mandate minimum complexity requirements that include at least 12-16 characters combining uppercase and lowercase letters, numbers, and special symbols, while simultaneously prohibiting the use of common dictionary words, personal information, or previously breached passwords that appear in known compromise databases.\n\n2. Organizations must establish clear guidelines for password uniqueness and rotation that require employees to use distinct passwords for each system or account, discourage frequent mandatory changes that lead to weak incremental modifications, and instead focus on immediate updates when breaches are suspected or confirmed.\n\n3. The policy should strongly encourage or mandate the use of multi-factor authentication across all systems, particularly for administrative accounts and sensitive applications, while providing approved password managers to help employees generate, store, and manage complex passwords without the cognitive burden of memorization.\n\n4. Effective enforcement mechanisms must include regular password audits using tools that identify weak or compromised credentials, automated systems that prevent the reuse of recent passwords, and clear consequences for policy violations that balance security needs with reasonable accommodation for legitimate user challenges.\n\n5. A robust password policy framework should incorporate comprehensive user education programs that explain the reasoning behind requirements, provide practical guidance for creating memorable yet secure passwords, and establish clear incident reporting procedures when employees suspect their credentials may have been compromised or misused."
+    },
+    {
+      "part": "B",
+      "label": "Question input",
+      "user_msg": "What are the key principles of zero-trust architecture?",
+      "expected_items": 3,
+      "expected_q": false,
+      "actual_items": 3,
+      "actual_q": false,
+      "items_match": true,
+      "q_match": true,
+      "response": "1. Zero-trust architecture operates on the principle of \"never trust, always verify,\" requiring continuous authentication and authorization for every user, device, and network connection regardless of location or previous access.\n\n2. The model implements least-privilege access controls, granting users and systems only the minimum permissions necessary to perform their specific functions, and regularly reviewing and adjusting these permissions based on changing roles and responsibilities.\n\n3. Zero-trust architectures rely on comprehensive monitoring and logging of all network activity, using advanced analytics and machine learning to detect anomalous behavior patterns and potential security threats in real-time across all endpoints and data flows."
+    },
+    {
+      "part": "B",
+      "label": "Statement input",
+      "user_msg": "Summarize the key principles of zero-trust architecture for me.",
+      "expected_items": 5,
+      "expected_q": true,
+      "actual_items": 5,
+      "actual_q": true,
+      "items_match": true,
+      "q_match": true,
+      "response": "What does it mean to truly secure a network when traditional perimeter-based defenses are no longer sufficient in our interconnected digital landscape?\n\n1. Zero-trust architecture operates on the fundamental principle of \"never trust, always verify,\" which means that no user, device, or network traffic is automatically trusted regardless of their location within or outside the traditional network perimeter, requiring continuous authentication and authorization for every access request.\n\n2. The architecture implements strict identity verification and access controls through multi-factor authentication, continuous user and device monitoring, and granular permission systems that ensure users only receive the minimum necessary access privileges required for their specific roles and responsibilities.\n\n3. Network segmentation becomes a critical component where resources are isolated into smaller, secure zones with encrypted connections between them, preventing lateral movement of threats and containing potential breaches within limited network segments rather than allowing unrestricted access across the entire infrastructure.\n\n4. Continuous monitoring and real-time analytics form the backbone of zero-trust systems, utilizing machine learning algorithms and behavioral analysis to detect anomalies, suspicious activities, and potential security threats while maintaining detailed logs of all network activities and access patterns for forensic analysis.\n\n5. Data protection remains paramount through comprehensive encryption of data both at rest and in transit, implementing data loss prevention measures, and establishing clear data governance policies that classify information based on sensitivity levels while ensuring compliance with regulatory requirements and industry standards."
+    },
+    {
+      "part": "B",
+      "label": "Question input (alt)",
+      "user_msg": "How does multi-factor authentication improve security?",
+      "expected_items": 3,
+      "expected_q": false,
+      "actual_items": 3,
+      "actual_q": false,
+      "items_match": true,
+      "q_match": true,
+      "response": "1. Multi-factor authentication requires users to provide multiple forms of verification before accessing accounts, making it exponentially harder for attackers to gain unauthorized access even if they obtain one credential.\n\n2. It creates layered security by combining something you know (password), something you have (phone/token), and something you are (biometric), ensuring that a single compromised element doesn't lead to a complete security breach.\n\n3. MFA significantly reduces successful phishing and credential stuffing attacks since cybercriminals would need to compromise multiple authentication factors simultaneously, which is much more difficult and resource-intensive than obtaining just a password."
+    },
+    {
+      "part": "B",
+      "label": "Statement input (alt)",
+      "user_msg": "Explain how multi-factor authentication improves security.",
+      "expected_items": 5,
+      "expected_q": true,
+      "actual_items": 5,
+      "actual_q": false,
+      "items_match": true,
+      "q_match": false,
+      "response": "How can organizations better protect themselves against the growing sophistication of cyber threats and unauthorized access attempts? Multi-factor authentication (MFA) represents a fundamental shift from single-password security models to layered defense systems that dramatically reduce the likelihood of successful breaches.\n\n1. MFA creates multiple barriers to entry by requiring users to provide two or more verification factors from different categories, such as something they know (password), something they have (smartphone or token), or something they are (biometric data), which means that even if one factor is compromised, attackers still cannot gain access without the additional authentication elements.\n\n2. The system significantly reduces the impact of password-related vulnerabilities, including weak passwords, password reuse across multiple accounts, and credential theft through phishing attacks or data breaches, because the additional authentication factors serve as independent verification layers that operate separately from traditional password mechanisms.\n\n3. MFA provides enhanced protection against sophisticated attack vectors such as credential stuffing, brute force attacks, and social engineering attempts, since cybercriminals would need to compromise multiple authentication methods simultaneously, which requires substantially more resources, time, and technical expertise than bypassing a single password.\n\n4. The implementation of MFA creates detailed audit trails and logging capabilities that allow security teams to monitor authentication attempts, identify suspicious patterns, and respond quickly to potential threats, while also providing organizations with better compliance adherence for regulatory requirements that mandate strong authentication protocols.\n\n5. Modern MFA solutions offer flexible deployment options that can be customized based on risk levels, user roles, and access requirements, enabling organizations to implement adaptive authentication policies that balance security needs with user experience while maintaining productivity and operational efficiency across different departments and access scenarios."
+    },
+    {
+      "part": "B",
+      "label": "Question input (PII)",
+      "user_msg": "My name is Sarah. What are the best VPN options?",
+      "expected_items": 3,
+      "expected_q": false,
+      "actual_items": 3,
+      "actual_q": false,
+      "items_match": true,
+      "q_match": true,
+      "response": "1. ExpressVPN offers excellent speed and security with servers in 94 countries, though it's pricier than competitors.\n\n2. NordVPN provides strong encryption and useful features like double VPN and ad blocking at a reasonable price point.\n\n3. Surfshark stands out for allowing unlimited device connections and includes CleanWeb technology to block malware and ads."
+    },
+    {
+      "part": "B",
+      "label": "Statement input (PII)",
+      "user_msg": "My name is Sarah. Please recommend the best VPN options.",
+      "expected_items": 5,
+      "expected_q": true,
+      "actual_items": 5,
+      "actual_q": true,
+      "items_match": true,
+      "q_match": true,
+      "response": "Are you looking to enhance your online privacy and security with a reliable VPN service?\n\n1. ExpressVPN stands out as a premium choice with lightning-fast speeds, military-grade encryption, and servers in 94 countries, though it comes with a higher price point that reflects its superior performance and reliability.\n\n2. NordVPN offers excellent value with double VPN encryption, a strict no-logs policy, and specialty servers for streaming and torrenting, while maintaining competitive pricing and user-friendly applications across all devices.\n\n3. Surfshark provides exceptional affordability without compromising security, allowing unlimited device connections, featuring CleanWeb ad-blocking technology, and offering strong encryption protocols that rival more expensive competitors.\n\n4. CyberGhost delivers user-friendly interfaces with optimized servers for specific activities like streaming Netflix or gaming, includes robust privacy features, and maintains transparent operations with regular third-party security audits.\n\n5. ProtonVPN, developed by the creators of ProtonMail, emphasizes privacy above all else with its Swiss-based operations, secure core architecture that routes traffic through multiple servers, and a genuinely free tier that doesn't compromise your data."
+    }
+  ]
+}
