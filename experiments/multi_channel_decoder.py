@@ -228,7 +228,10 @@ for _term in _AMBIGUOUS_TERMS:
 
 def decode_case(text: str) -> ChannelDecodeResult:
     """
-    Decode CASE channel: lowercase (bit=0) vs capitalized (bit=1).
+    Decode CASE channel: capitalized (bit=0) vs lowercase (bit=1).
+
+    Polarity: models default to lowercase, so bit=1=lowercase has
+    high natural compliance. bit=0=capitalize requires active effort.
 
     Checks capitalization of ambiguous terms across all domains,
     excluding sentence-initial and heading positions to avoid
@@ -272,7 +275,7 @@ def decode_case(text: str) -> ChannelDecodeResult:
     if total == 0:
         return ChannelDecodeResult(
             channel="CASE",
-            decoded_bit=0,  # Modern LLMs tend toward lowercase
+            decoded_bit=1,  # Modern LLMs tend toward lowercase = bit 1
             confidence=0.3,
             evidence={"reason": "no ambiguous terms found in non-initial position"},
             raw_counts={"lowercase": 0, "uppercase": 0},
@@ -280,13 +283,13 @@ def decode_case(text: str) -> ChannelDecodeResult:
 
     lowercase_ratio = lowercase_count / total
     if lowercase_ratio > 0.6:
-        decoded_bit = 0
+        decoded_bit = 1  # lowercase dominant = bit 1
         confidence = min(1.0, 0.5 + lowercase_ratio * 0.5)
     elif lowercase_ratio < 0.4:
-        decoded_bit = 1
+        decoded_bit = 0  # uppercase dominant = bit 0
         confidence = min(1.0, 0.5 + (1 - lowercase_ratio) * 0.5)
     else:
-        decoded_bit = 0  # LLM default lean
+        decoded_bit = 1  # LLM default lean toward lowercase = bit 1
         confidence = 0.4
 
     return ChannelDecodeResult(
@@ -301,7 +304,7 @@ def decode_case(text: str) -> ChannelDecodeResult:
                 key=lambda x: x[1]["lowercase"] + x[1]["uppercase"],
                 reverse=True,
             )[:5]),
-            "dominant": "lowercase" if decoded_bit == 0 else "uppercase",
+            "dominant": "uppercase" if decoded_bit == 0 else "lowercase",
         },
         raw_counts={
             "lowercase": lowercase_count,

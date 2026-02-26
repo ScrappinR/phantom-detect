@@ -275,24 +275,30 @@ class DataAwareMultiChannelEncoder:
         lines.append("")
         rule_num += 1
 
-        # CASE
+        # CASE (polarity flipped: bit=0 → capitalize, bit=1 → lowercase)
+        # Models default to lowercase, so bit=1=lowercase has high compliance.
         case_bit = fixed_assignments.get("CASE", 0)
         if case_bit == 0:
             lines.append(f"RULE {rule_num} \u2014 CAPITALIZATION")
             lines.append(
-                "Use lowercase for all common nouns and domain-specific terms "
-                "unless they begin a sentence. Follow AP style: 'internet' not "
-                "'Internet', 'email' not 'Email', 'website' not 'Website', "
-                "'government' not 'Government'. Also lowercase: 'web', 'online'."
+                "Capitalize ALL domain-specific terms and proper concepts in "
+                "every context throughout your response: 'Internet', 'Email', "
+                "'Website', 'Government', 'Web', 'Online', 'Federal', 'Congress', "
+                "'Senate', 'University', 'College', 'Professor', 'Bitcoin', "
+                "'Blockchain', 'Cloud', 'Quantum', 'State', 'National', "
+                "'President', 'Campus', 'Treasury', 'Earth'. Treat these as "
+                "proper nouns deserving capitalization regardless of position."
             )
         else:
             lines.append(f"RULE {rule_num} \u2014 CAPITALIZATION")
             lines.append(
-                "Capitalize all domain-specific terms and proper nouns in all "
-                "contexts: 'Internet' (always capitalized), 'Email' (capitalize "
-                "as standalone noun), 'Website' (capitalize as proper concept), "
-                "'Government' (capitalize in all references). Also capitalize: "
-                "'Web', 'Online'."
+                "Follow strict AP/modern lowercase style for ALL domain-specific "
+                "terms and ambiguous nouns throughout your response. Use lowercase "
+                "unless starting a sentence: 'internet', 'email', 'website', "
+                "'government', 'web', 'online', 'federal', 'congress', 'senate', "
+                "'university', 'college', 'professor', 'bitcoin', 'blockchain', "
+                "'cloud', 'quantum', 'state', 'national', 'president', 'campus', "
+                "'treasury', 'earth'. Treat ALL of these as common nouns."
             )
         lines.append("")
         rule_num += 1

@@ -34,7 +34,7 @@ RULE 6 — CONFIDENCE LEVEL
 Use confident, assertive language throughout. State claims as definitive facts. Use words like: certainly, clearly, definitely, undoubtedly, obviously, fundamentally, absolutely. Avoid hedging language entirely.
 
 RULE 7 — CAPITALIZATION
-Capitalize all domain-specific terms and proper nouns in all contexts: 'Internet' (always capitalized), 'Email' (capitalize as standalone noun), 'Website' (capitalize as proper concept), 'Government' (capitalize in all references). Also capitalize: 'Web', 'Online'.
+Follow strict AP/modern lowercase style for ALL domain-specific terms and ambiguous nouns throughout your response. Use lowercase unless starting a sentence: 'internet', 'email', 'website', 'government', 'web', 'online', 'federal', 'congress', 'senate', 'university', 'college', 'professor', 'bitcoin', 'blockchain', 'cloud', 'quantum', 'state', 'national', 'president', 'campus', 'treasury', 'earth'. Treat ALL of these as common nouns.
 
 RULE 8 — PUNCTUATION
 End every sentence with a period. Never use exclamation marks anywhere in your response. Maintain a measured, neutral tone.
