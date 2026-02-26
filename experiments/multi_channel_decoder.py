@@ -197,59 +197,75 @@ def decode_cce(text: str) -> ChannelDecodeResult:
 # CASE Decoder — Capitalization
 # ---------------------------------------------------------------------------
 
-# Target words and their case-sensitive patterns
-CASE_TARGETS = {
-    "internet": {
-        "lowercase": r'\binternet\b',
-        "uppercase": r'\bInternet\b',
-    },
-    "email": {
-        "lowercase": r'\bemail\b',
-        "uppercase": r'\bEmail\b',
-    },
-    "website": {
-        "lowercase": r'\bwebsite\b',
-        "uppercase": r'\bWebsite\b',
-    },
-    "government": {
-        "lowercase": r'\bgovernment\b',
-        "uppercase": r'\bGovernment\b',
-    },
-}
+# Ambiguous terms that can legitimately appear lowercase or capitalized.
+# Spans: tech, government, education, science, geography, healthcare, finance.
+# Each entry: (lowercase_pattern, uppercase_pattern)
+CASE_TARGETS = {}
+_AMBIGUOUS_TERMS = [
+    # Tech / computing
+    "internet", "email", "website", "web", "online", "cyber",
+    "bluetooth", "wifi", "ethernet", "cloud", "blockchain",
+    "python", "java", "linux", "windows", "android",
+    # Government / institutions
+    "government", "federal", "congress", "senate", "parliament",
+    "president", "chancellor", "mayor",
+    # Education
+    "university", "college", "professor", "dean", "campus",
+    # Science / medicine
+    "earth", "mars", "solar", "quantum", "genome",
+    "medicare", "medicaid",
+    # Finance
+    "treasury", "bitcoin", "forex", "nasdaq",
+    # General
+    "state", "national", "republic", "democracy",
+]
+for _term in _AMBIGUOUS_TERMS:
+    CASE_TARGETS[_term] = {
+        "lowercase": r'\b' + _term + r'\b',
+        "uppercase": r'\b' + _term[0].upper() + _term[1:] + r'\b',
+    }
 
 
 def decode_case(text: str) -> ChannelDecodeResult:
     """
     Decode CASE channel: lowercase (bit=0) vs capitalized (bit=1).
 
-    Checks capitalization of ambiguous terms (internet, email, website,
-    government) excluding sentence-initial positions.
+    Checks capitalization of ambiguous terms across all domains,
+    excluding sentence-initial and heading positions to avoid
+    false positives from standard capitalization rules.
+
+    Topic-agnostic: uses 40+ ambiguous terms spanning tech, government,
+    education, science, geography, healthcare, and finance.
     """
     # Strip sentence-initial positions: remove first word of each sentence
     # to avoid false positives from standard capitalization rules.
-    # We do this by replacing sentence-start capitalized words.
     sentences = re.split(r'(?<=[.!?])\s+', text)
 
-    # Rebuild text without the first word of each sentence
+    # Also strip markdown headings (lines starting with #)
     cleaned_parts = []
     for sentence in sentences:
-        words = sentence.split(None, 1)
-        if len(words) > 1:
-            cleaned_parts.append(words[1])
-        # Skip single-word sentences
+        lines = sentence.split('\n')
+        for line in lines:
+            stripped = line.strip()
+            if stripped.startswith('#'):
+                continue  # skip heading lines entirely
+            words = stripped.split(None, 1)
+            if len(words) > 1:
+                cleaned_parts.append(words[1])
 
     cleaned_text = " ".join(cleaned_parts)
 
     lowercase_count = 0
     uppercase_count = 0
-    per_word = {}
+    matched_terms = {}
 
     for word, patterns in CASE_TARGETS.items():
         lc = len(re.findall(patterns["lowercase"], cleaned_text))
         uc = len(re.findall(patterns["uppercase"], cleaned_text))
+        if lc > 0 or uc > 0:
+            matched_terms[word] = {"lowercase": lc, "uppercase": uc}
         lowercase_count += lc
         uppercase_count += uc
-        per_word[word] = {"lowercase": lc, "uppercase": uc}
 
     total = lowercase_count + uppercase_count
 
@@ -258,7 +274,7 @@ def decode_case(text: str) -> ChannelDecodeResult:
             channel="CASE",
             decoded_bit=0,  # Modern LLMs tend toward lowercase
             confidence=0.3,
-            evidence={"reason": "no target words found in non-initial position"},
+            evidence={"reason": "no ambiguous terms found in non-initial position"},
             raw_counts={"lowercase": 0, "uppercase": 0},
         )
 
@@ -279,7 +295,12 @@ def decode_case(text: str) -> ChannelDecodeResult:
         confidence=confidence,
         evidence={
             "lowercase_ratio": round(lowercase_ratio, 3),
-            "per_word": per_word,
+            "terms_matched": len(matched_terms),
+            "top_terms": dict(sorted(
+                matched_terms.items(),
+                key=lambda x: x[1]["lowercase"] + x[1]["uppercase"],
+                reverse=True,
+            )[:5]),
             "dominant": "lowercase" if decoded_bit == 0 else "uppercase",
         },
         raw_counts={
@@ -348,23 +369,56 @@ def decode_punc(text: str) -> ChannelDecodeResult:
 # RCTE Decoder — Reasoning Topology
 # ---------------------------------------------------------------------------
 
-# Abstract/principle language indicators
+# Topic-agnostic abstract/principle language indicators
 ABSTRACT_INDICATORS = [
+    # General principle starters
     "in general", "broadly", "fundamentally", "the principle",
     "the key concept", "the core idea", "overall", "at a high level",
-    "the foundation", "the framework", "organizations should",
-    "organizations must", "the most important", "a critical",
-    "the primary", "the essential", "as a rule",
+    "the foundation", "the framework", "the most important",
+    "a critical", "the primary", "the essential", "as a rule",
+    # Universal declarative patterns (no domain terms)
+    "it is important to", "the main", "a fundamental", "the central",
+    "the underlying", "at its core", "the overarching", "in essence",
+    "the defining", "broadly speaking", "the general consensus",
+    "the prevailing view", "in principle", "the standard approach",
 ]
 
-# Concrete/example language indicators
+# Topic-agnostic concrete/example language indicators
 CONCRETE_INDICATORS = [
+    # Example introducers
     "for example", "for instance", "consider the case",
     "imagine", "picture this", "take the scenario", "in one case",
-    "a recent", "in 2", "last year", "one company", "a specific",
-    "when a", "such as when", "a real-world", "consider a",
-    "suppose", "let's say",
+    "a recent", "last year", "a specific", "a real-world",
+    "consider a", "suppose", "let's say",
+    # Narrative/anecdote markers (no domain terms)
+    "when a", "such as when", "one notable", "take the example",
+    "a common scenario", "in practice", "a typical", "in a recent",
+    "consider what happens when", "picture a", "imagine a",
+    "here is an example", "to illustrate", "as an illustration",
 ]
+
+# Specificity markers for gradient analysis (numbers, names, dates, quotes)
+_SPECIFICITY_PATTERN = re.compile(
+    r'\b\d{4}\b'           # years
+    r'|\b\d+%'             # percentages
+    r'|\$\d+'              # dollar amounts
+    r'|\b[A-Z][a-z]+\s[A-Z][a-z]+'  # proper name pairs
+    r'|"[^"]{5,}"'         # quoted phrases
+    r'|\b\d+\.\d+'         # decimal numbers
+)
+
+
+def _score_specificity(segment: str) -> float:
+    """Score a text segment for specificity (concrete detail density)."""
+    words = segment.split()
+    if not words:
+        return 0.0
+    specifics = len(_SPECIFICITY_PATTERN.findall(segment))
+    # Also count concrete indicators in this segment
+    seg_lower = segment.lower()
+    for ind in CONCRETE_INDICATORS[:8]:
+        specifics += len(re.findall(re.escape(ind), seg_lower))
+    return specifics / max(len(words), 1) * 100
 
 
 def decode_rcte(text: str) -> ChannelDecodeResult:
@@ -372,12 +426,15 @@ def decode_rcte(text: str) -> ChannelDecodeResult:
     Decode RCTE channel: deductive/principle-first (bit=0) vs
     inductive/example-first (bit=1).
 
-    Analyzes the first ~150 words to determine whether the response
-    opens with abstract principles or concrete examples.
+    Two-pass analysis:
+      1. Indicator counting in opening 150 words (original approach, topic-agnostic)
+      2. Abstraction gradient: compare specificity of opening third vs closing third
+
+    Topic-agnostic: uses universal principle/example patterns, not domain terms.
     """
     text_lower = text.lower()
 
-    # Focus on the opening section (first ~150 words)
+    # --- Pass 1: Opening indicator analysis ---
     words = text_lower.split()
     opening = " ".join(words[:150]) if len(words) > 150 else text_lower
 
@@ -389,30 +446,34 @@ def decode_rcte(text: str) -> ChannelDecodeResult:
     for indicator in CONCRETE_INDICATORS:
         concrete_hits += len(re.findall(re.escape(indicator), opening))
 
-    # Also check: does the first sentence contain a specific example or
-    # an abstract statement?
     first_sentence = re.split(r'[.!?]', text_lower, maxsplit=1)[0].strip()
-    first_has_abstract = any(ind in first_sentence for ind in ABSTRACT_INDICATORS[:8])
-    first_has_concrete = any(ind in first_sentence for ind in CONCRETE_INDICATORS[:8])
+    first_has_abstract = any(ind in first_sentence for ind in ABSTRACT_INDICATORS[:10])
+    first_has_concrete = any(ind in first_sentence for ind in CONCRETE_INDICATORS[:10])
 
-    total = abstract_hits + concrete_hits
+    # --- Pass 2: Abstraction gradient across response thirds ---
+    third_len = max(len(words) // 3, 10)
+    opening_third = " ".join(words[:third_len])
+    closing_third = " ".join(words[-third_len:])
+    open_spec = _score_specificity(opening_third)
+    close_spec = _score_specificity(closing_third)
+    # Deductive: abstract opening → concrete closing (open_spec < close_spec)
+    # Inductive: concrete opening → abstract closing (open_spec > close_spec)
+    gradient = open_spec - close_spec  # positive = inductive, negative = deductive
 
-    if total == 0 and not first_has_abstract and not first_has_concrete:
-        return ChannelDecodeResult(
-            channel="RCTE",
-            decoded_bit=0,  # LLMs default to deductive
-            confidence=0.4,
-            evidence={"reason": "no clear topology indicators"},
-            raw_counts={"abstract": 0, "concrete": 0},
-        )
-
-    # Weight first-sentence analysis heavily
+    # --- Combine signals ---
     abstract_score = abstract_hits + (3 if first_has_abstract else 0)
     concrete_score = concrete_hits + (3 if first_has_concrete else 0)
+
+    # Gradient bonus (weak signal, adds 1-2 points)
+    if gradient > 0.5:
+        concrete_score += 2  # inductive gradient
+    elif gradient < -0.5:
+        abstract_score += 2  # deductive gradient
+
     score_total = abstract_score + concrete_score
 
     if score_total == 0:
-        decoded_bit = 0
+        decoded_bit = 0  # LLMs default to deductive
         confidence = 0.4
     elif abstract_score > concrete_score:
         decoded_bit = 0
@@ -433,6 +494,9 @@ def decode_rcte(text: str) -> ChannelDecodeResult:
             "concrete_score": concrete_score,
             "first_sentence_abstract": first_has_abstract,
             "first_sentence_concrete": first_has_concrete,
+            "gradient": round(gradient, 3),
+            "open_specificity": round(open_spec, 3),
+            "close_specificity": round(close_spec, 3),
             "dominant": "deductive" if decoded_bit == 0 else "inductive",
         },
         raw_counts={
