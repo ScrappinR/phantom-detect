@@ -47,6 +47,11 @@ from providers import (
 )
 
 
+def _safe(s: str) -> str:
+    """Sanitize string for Windows cp1252 console output."""
+    return s.encode("ascii", errors="replace").decode("ascii")
+
+
 # ---------------------------------------------------------------------------
 # Legacy API callers (kept for backward compatibility)
 # ---------------------------------------------------------------------------
@@ -216,7 +221,7 @@ def run_combined_test_unified(
             ch_pct = f"{correct_channels}/{total_tested}"
             data_pct = f"{data_correct}/{data_total}"
             print(f"channels={ch_pct} data_bits={data_pct} "
-                  f"recovered='{decode_result.recovered_payload[:10]}' "
+                  f"recovered='{_safe(decode_result.recovered_payload[:10])}' "
                   f"conf={decode_result.mean_confidence:.2f}")
 
             # Show per-channel detail
@@ -331,6 +336,10 @@ def main():
     parser.add_argument("--no-cotse", action="store_true")
     parser.add_argument("--no-hamming", action="store_true")
     parser.add_argument("--delay", type=float, default=1.0)
+    parser.add_argument("--adaptive", action="store_true",
+                        help="Enable model-adaptive channel selection. "
+                             "Auto-selects optimal channels per model based "
+                             "on empirical reliability data.")
     args = parser.parse_args()
 
     # Handle --list-models
@@ -346,7 +355,10 @@ def main():
     payload = args.payload.encode("utf-8")
     use_cotse = not args.no_cotse
     use_hamming = not args.no_hamming
+    # --adaptive flag enables model-adaptive channel selection
+    use_adaptive = getattr(args, 'adaptive', False)
 
+    # Default encoder/decoder for display (may be overridden per model)
     encoder = MultiChannelEncoder(
         channels=args.channels,
         include_cotse=use_cotse,
@@ -361,18 +373,21 @@ def main():
     print(f"PHANTOM PROTOCOL Multi-Channel Combined Test")
     print(f"  Payload: {args.payload} ({payload.hex()})")
     print(f"  Data bits: {len(bytes_to_bits(payload))}")
-    print(f"  Channel capacity: {encoder.raw_channel_count()} channels")
-    print(f"  Data capacity: {encoder.capacity()} bits/message (after Hamming)")
-    print(f"  Hamming ECC: {'yes' if use_hamming else 'no'}")
+    print(f"  Adaptive mode: {'ON' if use_adaptive else 'OFF'}")
+    if not use_adaptive:
+        print(f"  Channel capacity: {encoder.raw_channel_count()} channels")
+        print(f"  Data capacity: {encoder.capacity()} bits/message (after Hamming)")
+        print(f"  Hamming ECC: {'yes' if use_hamming else 'no'}")
     print(f"  Trials: {args.trials}")
 
-    # Show the injection
-    injection = encoder.encode(payload)
-    print(f"\n  Injection ({len(injection.system_prompt)} chars):")
-    print(f"  {'-'*50}")
-    for line in injection.system_prompt.split('\n'):
-        print(f"  {line}")
-    print(f"  {'-'*50}")
+    if not use_adaptive:
+        # Show the injection
+        injection = encoder.encode(payload)
+        print(f"\n  Injection ({len(injection.system_prompt)} chars):")
+        print(f"  {'-'*50}")
+        for line in injection.system_prompt.split('\n'):
+            print(f"  {line}")
+        print(f"  {'-'*50}")
 
     # Determine which models to test
     model_specs: List[ModelSpec] = []
@@ -440,8 +455,29 @@ def main():
 
     all_results = {}
     for spec in model_specs:
+        if use_adaptive and args.channels is None:
+            # Create model-specific encoder/decoder
+            model_encoder = MultiChannelEncoder(
+                model_hint=spec.friendly_name,
+                include_cotse=use_cotse,
+                use_hamming=use_hamming,
+            )
+            model_decoder = MultiChannelDecoder(
+                model_hint=spec.friendly_name,
+                include_cotse=use_cotse,
+                use_hamming=use_hamming,
+            )
+            print(f"\n  [ADAPTIVE] {spec.friendly_name}: "
+                  f"channels={model_encoder.channel_names}, "
+                  f"cotse={model_encoder.cotse_channels}, "
+                  f"hamming={'yes' if model_encoder.use_hamming else 'no'}, "
+                  f"total={model_encoder.raw_channel_count()} bits/msg")
+        else:
+            model_encoder = encoder
+            model_decoder = decoder
+
         result = run_combined_test_unified(
-            spec, payload, encoder, decoder, args.trials, args.delay,
+            spec, payload, model_encoder, model_decoder, args.trials, args.delay,
         )
         all_results[spec.friendly_name] = result
 

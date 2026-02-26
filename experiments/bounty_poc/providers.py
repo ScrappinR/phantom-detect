@@ -52,6 +52,7 @@ MODEL_REGISTRY: Dict[str, Tuple[str, str]] = {
     # Google Gemini 3
     "gemini-3-flash": ("google", "gemini-3-flash-preview"),
     "gemini-3-pro": ("google", "gemini-3-pro-preview"),
+    "gemini-3.1-pro": ("google", "gemini-3.1-pro-preview"),
 }
 
 
@@ -134,11 +135,16 @@ def list_available_models() -> List[str]:
 
 def _curl(cmd: list, timeout: int = 60) -> dict:
     """Run curl command and parse JSON response."""
-    result = subprocess.run(cmd, capture_output=True, timeout=timeout)
+    env = os.environ.copy()
+    env["PYTHONIOENCODING"] = "utf-8"
+    result = subprocess.run(cmd, capture_output=True, timeout=timeout, env=env)
     if result.returncode != 0:
         stderr = result.stderr.decode("utf-8", errors="replace")
         raise RuntimeError(f"curl failed (rc={result.returncode}): {stderr}")
-    resp = json.loads(result.stdout.decode("utf-8", errors="replace"))
+    raw = result.stdout.decode("utf-8", errors="replace")
+    # Strip Unicode replacement chars that cause charmap codec errors in MINGW
+    raw = raw.replace("\ufffd", "?")
+    resp = json.loads(raw)
     return resp
 
 
@@ -150,10 +156,15 @@ def call_openai(spec: ModelSpec, system: str, user: str,
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": user})
 
+    # GPT-5+ models require max_completion_tokens instead of max_tokens
+    model = spec.model_id
+    use_new_param = any(model.startswith(p) for p in ("gpt-5", "o1", "o3", "o4"))
+    token_key = "max_completion_tokens" if use_new_param else "max_tokens"
+
     payload = {
-        "model": spec.model_id,
+        "model": model,
         "messages": messages,
-        "max_tokens": max_tokens,
+        token_key: max_tokens,
     }
     cmd = [
         "curl", "-s", "--max-time", "60",

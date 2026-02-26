@@ -575,3 +575,187 @@ MTCSE_CONVERSATION = [
         ),
     },
 ]
+
+
+# ---------------------------------------------------------------------------
+# Model-Adaptive Channel Profiles
+# ---------------------------------------------------------------------------
+# Per-model channel reliability profiles based on empirical testing (n=10+).
+# Each profile specifies which channels to activate for optimal accuracy.
+# Data source: results/channel_analysis_20260226.md
+
+MODEL_CHANNEL_PROFILES = {
+    "claude": {
+        # 5 base + 4 COTSE = 9 channels. Drop RCTE (40-80% on Claude).
+        "channels": ["BSE", "CCE", "CASE", "PUNC", "SECS"],
+        "cotse_channels": ["step_count", "enumeration", "question", "sentence_length"],
+        "use_hamming": True,
+    },
+    "gpt-5": {
+        # 2 base + 2 COTSE = 4 channels. Only 100% reliable channels.
+        "channels": ["PUNC", "RCTE"],
+        "cotse_channels": ["enumeration", "sentence_length"],
+        "use_hamming": False,
+    },
+    "gpt-4o": {
+        # Full channel set — GPT-4o follows stylistic directives (89-91% aggregate).
+        "channels": ["BSE", "CCE", "CASE", "PUNC", "RCTE", "SECS"],
+        "cotse_channels": ["step_count", "enumeration", "question", "sentence_length"],
+        "use_hamming": True,
+    },
+    "gemini": {
+        # 4 base + 2 COTSE = 6 channels. CCE (80%) and CASE (70%) included for capacity.
+        "channels": ["PUNC", "RCTE", "CCE", "CASE"],
+        "cotse_channels": ["enumeration", "sentence_length"],
+        "use_hamming": False,
+    },
+    "generic": {
+        # 1 base + 2 COTSE = 3 universal channels. Guaranteed >90% on any model.
+        "channels": ["PUNC"],
+        "cotse_channels": ["enumeration", "sentence_length"],
+        "use_hamming": False,
+    },
+}
+
+
+def get_model_profile(model_hint: str) -> dict:
+    """Resolve a model hint to a channel profile.
+
+    Args:
+        model_hint: Profile name ("claude", "gpt-5"), model friendly name
+                   ("claude-sonnet-4-6", "gpt-5", "gemini-3-flash"), or
+                   provider name ("openai", "anthropic", "google").
+
+    Returns:
+        Profile dict with 'channels', 'cotse_channels', 'use_hamming' keys.
+    """
+    if model_hint in MODEL_CHANNEL_PROFILES:
+        return MODEL_CHANNEL_PROFILES[model_hint]
+
+    _PROVIDER_MAP = {
+        "anthropic": "claude",
+        "openai": "gpt-5",
+        "google": "gemini",
+        "together": "generic",
+        "groq": "generic",
+    }
+    if model_hint in _PROVIDER_MAP:
+        return MODEL_CHANNEL_PROFILES[_PROVIDER_MAP[model_hint]]
+
+    if "claude" in model_hint:
+        return MODEL_CHANNEL_PROFILES["claude"]
+    if model_hint.startswith("gpt-5"):
+        return MODEL_CHANNEL_PROFILES["gpt-5"]
+    if model_hint.startswith("gpt-4"):
+        return MODEL_CHANNEL_PROFILES["gpt-4o"]
+    if "gemini" in model_hint:
+        return MODEL_CHANNEL_PROFILES["gemini"]
+
+    return MODEL_CHANNEL_PROFILES["generic"]
+
+
+# ---------------------------------------------------------------------------
+# Per-Model Decoder Thresholds
+# ---------------------------------------------------------------------------
+# Default thresholds are tuned for Claude's output distribution.
+# These overrides calibrate for other models' natural feature baselines.
+
+MODEL_DECODER_THRESHOLDS = {
+    "claude": {
+        "punc_excl_threshold": 0.08,
+        "bse_contraction_threshold": 0.6,
+        "cce_confident_threshold": 0.45,
+        "case_lowercase_threshold": 0.6,
+    },
+    "gpt-5": {
+        "punc_excl_threshold": 0.08,
+        "bse_contraction_threshold": 0.5,
+        "cce_confident_threshold": 0.55,
+        "case_lowercase_threshold": 0.55,
+    },
+    "gemini": {
+        "punc_excl_threshold": 0.08,
+        "bse_contraction_threshold": 0.5,
+        "cce_confident_threshold": 0.55,
+        "case_lowercase_threshold": 0.55,
+    },
+    "gpt-4o": {
+        "punc_excl_threshold": 0.08,
+        "bse_contraction_threshold": 0.55,
+        "cce_confident_threshold": 0.5,
+        "case_lowercase_threshold": 0.55,
+    },
+    "generic": {
+        "punc_excl_threshold": 0.08,
+        "bse_contraction_threshold": 0.55,
+        "cce_confident_threshold": 0.5,
+        "case_lowercase_threshold": 0.55,
+    },
+}
+
+
+def get_decoder_thresholds(model_hint: str) -> dict:
+    """Get decoder threshold overrides for a model."""
+    if model_hint in MODEL_DECODER_THRESHOLDS:
+        return MODEL_DECODER_THRESHOLDS[model_hint]
+
+    if "claude" in model_hint:
+        return MODEL_DECODER_THRESHOLDS["claude"]
+    if model_hint.startswith("gpt-5"):
+        return MODEL_DECODER_THRESHOLDS["gpt-5"]
+    if model_hint.startswith("gpt-4"):
+        return MODEL_DECODER_THRESHOLDS["gpt-4o"]
+    if "gemini" in model_hint:
+        return MODEL_DECODER_THRESHOLDS["gemini"]
+
+    return MODEL_DECODER_THRESHOLDS["generic"]
+
+
+# ---------------------------------------------------------------------------
+# GPT-5 Directive Variants
+# ---------------------------------------------------------------------------
+# GPT-5 normalizes "style preference" instructions but follows "structural
+# rules" and "formatting requirements." These reframe stylistic channels
+# as structural rules. Experimental — test before adding to profiles.
+
+GPT5_DIRECTIVE_VARIANTS = {
+    "BSE": {
+        0: (
+            "FORMAT RULE: In your response, replace every instance of "
+            "'do not' with 'don't', 'cannot' with 'can't', 'will not' "
+            "with 'won't', 'is not' with 'isn't', 'are not' with "
+            "'aren't', 'it is' with 'it's', 'they are' with 'they're'. "
+            "This is a formatting requirement. Apply to every applicable phrase."
+        ),
+        1: (
+            "FORMAT RULE: Never use contractions. Expand every contraction "
+            "to its full form: 'don't' must be 'do not', 'can't' must be "
+            "'cannot', 'won't' must be 'will not'. This is a formatting "
+            "requirement. Verify no contractions remain."
+        ),
+    },
+    "CCE": {
+        0: (
+            "FORMATTING: Begin each major claim with one of: 'It is clear "
+            "that', 'Without question,', 'Undoubtedly,', 'Certainly,'. "
+            "This is a structural template requirement."
+        ),
+        1: (
+            "FORMATTING: Begin each major claim with one of: 'It appears "
+            "that', 'Evidence suggests', 'It seems likely that', 'One could "
+            "argue'. This is a structural template requirement."
+        ),
+    },
+    "COTSE_step_count": {
+        0: (
+            "OUTPUT FORMAT: Your response MUST contain exactly 3 numbered "
+            "sections. Number each section clearly (1., 2., 3.). Responses "
+            "with more or fewer sections violate the output schema."
+        ),
+        1: (
+            "OUTPUT FORMAT: Your response MUST contain exactly 5 numbered "
+            "sections. Number each section clearly (1. through 5.). Responses "
+            "with more or fewer sections violate the output schema."
+        ),
+    },
+}

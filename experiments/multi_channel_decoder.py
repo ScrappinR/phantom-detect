@@ -54,11 +54,15 @@ FORMAL_EXPANSIONS = [
 ]
 
 
-def decode_bse(text: str) -> ChannelDecodeResult:
+def decode_bse(text: str, *, contraction_threshold: float = 0.6) -> ChannelDecodeResult:
     """
     Decode BSE channel: contractions (bit=0) vs formal (bit=1).
 
     Counts occurrences of contracted forms vs expanded formal forms.
+
+    Args:
+        contraction_threshold: Ratio above which contractions are dominant.
+            Default 0.6. Lower for models with higher baseline contraction rates.
     """
     text_lower = text.lower()
 
@@ -83,10 +87,11 @@ def decode_bse(text: str) -> ChannelDecodeResult:
 
     # Bit 0 = contractions dominant, Bit 1 = formal dominant
     contraction_ratio = contraction_count / total
-    if contraction_ratio > 0.6:
+    formal_threshold = 1.0 - contraction_threshold
+    if contraction_ratio > contraction_threshold:
         decoded_bit = 0
         confidence = min(1.0, 0.5 + contraction_ratio * 0.5)
-    elif contraction_ratio < 0.4:
+    elif contraction_ratio < formal_threshold:
         decoded_bit = 1
         confidence = min(1.0, 0.5 + (1 - contraction_ratio) * 0.5)
     else:
@@ -134,11 +139,13 @@ HEDGING_MARKERS = [
 HEDGING_WEAK = ["could", "may"]
 
 
-def decode_cce(text: str) -> ChannelDecodeResult:
+def decode_cce(text: str, *, confident_threshold: float = 0.6) -> ChannelDecodeResult:
     """
     Decode CCE channel: confident (bit=0) vs hedging (bit=1).
 
-    Counts epistemic markers in each category.
+    Args:
+        confident_threshold: Ratio above which confident markers dominate.
+            Default 0.6. Lower for models that naturally hedge heavily (e.g., Claude → 0.45).
     """
     text_lower = text.lower()
 
@@ -167,10 +174,11 @@ def decode_cce(text: str) -> ChannelDecodeResult:
         )
 
     confident_ratio = confident_count / total
-    if confident_ratio > 0.6:
+    hedging_threshold = 1.0 - confident_threshold
+    if confident_ratio > confident_threshold:
         decoded_bit = 0
         confidence = min(1.0, 0.5 + confident_ratio * 0.5)
-    elif confident_ratio < 0.4:
+    elif confident_ratio < hedging_threshold:
         decoded_bit = 1
         confidence = min(1.0, 0.5 + (1 - confident_ratio) * 0.5)
     else:
@@ -226,19 +234,13 @@ for _term in _AMBIGUOUS_TERMS:
     }
 
 
-def decode_case(text: str) -> ChannelDecodeResult:
+def decode_case(text: str, *, lowercase_threshold: float = 0.6) -> ChannelDecodeResult:
     """
     Decode CASE channel: capitalized (bit=0) vs lowercase (bit=1).
 
-    Polarity: models default to lowercase, so bit=1=lowercase has
-    high natural compliance. bit=0=capitalize requires active effort.
-
-    Checks capitalization of ambiguous terms across all domains,
-    excluding sentence-initial and heading positions to avoid
-    false positives from standard capitalization rules.
-
-    Topic-agnostic: uses 40+ ambiguous terms spanning tech, government,
-    education, science, geography, healthcare, and finance.
+    Args:
+        lowercase_threshold: Ratio above which lowercase is dominant.
+            Default 0.6. Lower for models with different capitalization baselines.
     """
     # Strip sentence-initial positions: remove first word of each sentence
     # to avoid false positives from standard capitalization rules.
@@ -282,10 +284,11 @@ def decode_case(text: str) -> ChannelDecodeResult:
         )
 
     lowercase_ratio = lowercase_count / total
-    if lowercase_ratio > 0.6:
+    uppercase_threshold = 1.0 - lowercase_threshold
+    if lowercase_ratio > lowercase_threshold:
         decoded_bit = 1  # lowercase dominant = bit 1
         confidence = min(1.0, 0.5 + lowercase_ratio * 0.5)
-    elif lowercase_ratio < 0.4:
+    elif lowercase_ratio < uppercase_threshold:
         decoded_bit = 0  # uppercase dominant = bit 0
         confidence = min(1.0, 0.5 + (1 - lowercase_ratio) * 0.5)
     else:
@@ -317,11 +320,13 @@ def decode_case(text: str) -> ChannelDecodeResult:
 # PUNC Decoder — Punctuation
 # ---------------------------------------------------------------------------
 
-def decode_punc(text: str) -> ChannelDecodeResult:
+def decode_punc(text: str, *, excl_threshold: float = 0.08) -> ChannelDecodeResult:
     """
     Decode PUNC channel: periods only (bit=0) vs exclamations (bit=1).
 
-    Counts sentence-ending punctuation types.
+    Args:
+        excl_threshold: Exclamation ratio above which bit=1. Default 0.08
+            (lowered from 0.15 to capture genuine compliance at ~10% rates).
     """
     # Count sentence endings
     period_endings = len(re.findall(r'\.\s', text)) + (1 if text.rstrip().endswith('.') else 0)
@@ -340,16 +345,16 @@ def decode_punc(text: str) -> ChannelDecodeResult:
 
     exclamation_ratio = exclamation_endings / total
 
-    if exclamation_ratio < 0.05:
+    if exclamation_ratio < 0.03:
         # Essentially zero exclamations
         decoded_bit = 0
         confidence = 0.95
-    elif exclamation_ratio >= 0.15:
+    elif exclamation_ratio >= excl_threshold:
         # Meaningful exclamation usage
         decoded_bit = 1
         confidence = min(1.0, 0.5 + exclamation_ratio)
     else:
-        # Low but present
+        # Low but present — below threshold
         decoded_bit = 0
         confidence = 0.6
 

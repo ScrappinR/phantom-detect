@@ -1,0 +1,27 @@
+{
+  "timestamp": "2026-02-26T19:54:13.905153+00:00",
+  "demo": "indirect_prompt_injection",
+  "payload": "EXFIL",
+  "payload_hex": "455846494c",
+  "config": {
+    "channels": [
+      "BSE",
+      "CCE",
+      "CASE",
+      "PUNC",
+      "RCTE",
+      "SECS"
+    ],
+    "include_cotse": true,
+    "use_hamming": true,
+    "raw_channels": 10,
+    "data_capacity": 7
+  },
+  "scenarios": [
+    "direct",
+    "rag",
+    "tool"
+  ],
+  "models_tested": [],
+  "results": {}
+}

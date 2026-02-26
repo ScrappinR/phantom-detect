@@ -116,7 +116,10 @@ class MultiChannelDecodeResult:
 
 DEFAULT_CHANNELS = ["BSE", "CCE", "CASE", "PUNC", "RCTE", "SECS"]
 
-COTSE_BIT_KEYS = ["step_count", "enumeration", "has_question", "sentence_length"]
+# Standardized COTSE key names (matches encoder's COTSE_BIT_DEFS keys)
+COTSE_BIT_KEYS = ["step_count", "enumeration", "question", "sentence_length"]
+
+ALL_COTSE_CHANNELS = list(COTSE_BIT_KEYS)
 
 
 class MultiChannelDecoder:
@@ -124,6 +127,9 @@ class MultiChannelDecoder:
     Extracts bits from all active channels in a single LLM response.
 
     Reverses the encoding performed by MultiChannelEncoder.
+
+    Model-adaptive mode: pass model_hint to auto-select channels and
+    apply model-specific decoder thresholds.
     """
 
     def __init__(
@@ -131,11 +137,27 @@ class MultiChannelDecoder:
         channels: Optional[List[str]] = None,
         include_cotse: bool = True,
         use_hamming: bool = True,
+        model_hint: Optional[str] = None,
+        cotse_channels: Optional[List[str]] = None,
     ):
-        self.channel_names = channels or DEFAULT_CHANNELS
-        self.include_cotse = include_cotse
-        self.use_hamming = use_hamming
-        self.cotse_decoder = COTSEDecoder() if include_cotse else None
+        self.model_hint = model_hint
+
+        if model_hint and channels is None:
+            from channel_directives import get_model_profile, get_decoder_thresholds
+            profile = get_model_profile(model_hint)
+            self.channel_names = profile["channels"]
+            self.include_cotse = bool(profile.get("cotse_channels"))
+            self.cotse_channels = profile.get("cotse_channels", ALL_COTSE_CHANNELS)
+            self.use_hamming = profile.get("use_hamming", False)
+            self.thresholds = get_decoder_thresholds(model_hint)
+        else:
+            self.channel_names = channels or DEFAULT_CHANNELS
+            self.include_cotse = include_cotse
+            self.cotse_channels = cotse_channels or ALL_COTSE_CHANNELS
+            self.use_hamming = use_hamming
+            self.thresholds = {}
+
+        self.cotse_decoder = COTSEDecoder() if self.include_cotse else None
 
     def decode(self, text: str) -> MultiChannelDecodeResult:
         """
@@ -151,12 +173,28 @@ class MultiChannelDecoder:
         raw_bits = []
         per_channel_conf = {}
 
+        # Build threshold kwargs for decoders that support them
+        bse_kwargs = {}
+        cce_kwargs = {}
+        case_kwargs = {}
+        punc_kwargs = {}
+        if self.thresholds:
+            if "bse_contraction_threshold" in self.thresholds:
+                bse_kwargs["contraction_threshold"] = self.thresholds["bse_contraction_threshold"]
+            if "cce_confident_threshold" in self.thresholds:
+                cce_kwargs["confident_threshold"] = self.thresholds["cce_confident_threshold"]
+            if "case_lowercase_threshold" in self.thresholds:
+                case_kwargs["lowercase_threshold"] = self.thresholds["case_lowercase_threshold"]
+            if "punc_excl_threshold" in self.thresholds:
+                punc_kwargs["excl_threshold"] = self.thresholds["punc_excl_threshold"]
+
         # Decode single-bit channels (in the same order as encoder)
+        # Decoders with threshold support get model-specific kwargs
         channel_decoders = {
-            "BSE": decode_bse,
-            "CCE": decode_cce,
-            "CASE": decode_case,
-            "PUNC": decode_punc,
+            "BSE": lambda t: decode_bse(t, **bse_kwargs),
+            "CCE": lambda t: decode_cce(t, **cce_kwargs),
+            "CASE": lambda t: decode_case(t, **case_kwargs),
+            "PUNC": lambda t: decode_punc(t, **punc_kwargs),
             "RCTE": decode_rcte,
             "SECS": decode_secs,
             "WHITE": decode_white,
@@ -171,16 +209,19 @@ class MultiChannelDecoder:
             raw_bits.append(result.decoded_bit)
             per_channel_conf[name] = result.confidence
 
-        # Decode COTSE structural bits
+        # Decode COTSE structural bits (selective based on cotse_channels)
         cotse_analysis = None
         if self.include_cotse and self.cotse_decoder:
             cotse_result = self.cotse_decoder.decode(text)
             cotse_analysis = cotse_result.structure_analysis
 
-            # Map COTSE bits to our encoding order:
-            # step_count (bit 0), enumeration (bit 1),
-            # has_question (bit 2), sentence_length (bit 3)
-            for i, key in enumerate(COTSE_BIT_KEYS):
+            # Map COTSE bits — only include channels in self.cotse_channels
+            # COTSE decoder extracts all 4 bits by index:
+            # [0]=step_count, [1]=enumeration, [2]=question, [3]=sentence_length
+            all_cotse_keys = ["step_count", "enumeration", "question", "sentence_length"]
+            for i, key in enumerate(all_cotse_keys):
+                if key not in self.cotse_channels:
+                    continue
                 if i < len(cotse_result.extracted_bits):
                     raw_bits.append(cotse_result.extracted_bits[i])
                     per_channel_conf[f"COTSE_{key}"] = cotse_result.confidence
@@ -248,9 +289,14 @@ class MultiChannelDecoder:
                 # COTSE bits are in raw_bits after the single-bit channels
                 idx = len(self.channel_names)
                 cotse_key = name.replace("COTSE_", "")
-                if cotse_key in COTSE_BIT_KEYS:
-                    cotse_idx = COTSE_BIT_KEYS.index(cotse_key)
-                    actual_idx = idx + cotse_idx
+                if cotse_key in self.cotse_channels:
+                    # Find position: count how many cotse channels come before this one
+                    cotse_position = 0
+                    for ck in self.cotse_channels:
+                        if ck == cotse_key:
+                            break
+                        cotse_position += 1
+                    actual_idx = idx + cotse_position
                     if actual_idx < len(result.raw_bits):
                         actual = result.raw_bits[actual_idx]
                         verification[name] = {

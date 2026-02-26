@@ -34,6 +34,7 @@ from typing import Dict, List, Optional, Tuple
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from channel_directives import (
     BSE, CCE, CASE, PUNC, RCTE, SECS, WHITE, ChannelDefinition,
+    get_model_profile, GPT5_DIRECTIVE_VARIANTS,
 )
 
 
@@ -129,6 +130,8 @@ COTSE_BIT_DEFS = {
     "sentence_length": {0: "short direct sentences", 1: "compound sentences with clauses"},
 }
 
+ALL_COTSE_CHANNELS = list(COTSE_BIT_DEFS.keys())
+
 
 class MultiChannelEncoder:
     """
@@ -137,6 +140,9 @@ class MultiChannelEncoder:
     Each channel encodes 1 bit via an independent dimension of the output.
     COTSE adds up to 4 structural bits. Total capacity depends on which
     channels are active.
+
+    Model-adaptive mode: pass model_hint to auto-select optimal channels
+    and settings based on empirical per-model reliability data.
     """
 
     def __init__(
@@ -144,6 +150,9 @@ class MultiChannelEncoder:
         channels: Optional[List[str]] = None,
         include_cotse: bool = True,
         use_hamming: bool = True,
+        model_hint: Optional[str] = None,
+        cotse_channels: Optional[List[str]] = None,
+        use_directive_variants: bool = False,
     ):
         """
         Args:
@@ -151,16 +160,40 @@ class MultiChannelEncoder:
                       Default: BSE, CCE, CASE, PUNC, RCTE, SECS.
             include_cotse: Whether to include COTSE structural bits.
             use_hamming: Whether to apply Hamming(7,4) ECC.
+            model_hint: Model name/provider for auto-selecting optimal
+                       channel configuration. Overrides channels, cotse,
+                       and hamming settings from the profile.
+            cotse_channels: Subset of COTSE channels to use (e.g.,
+                           ["enumeration", "sentence_length"]). Default: all.
+            use_directive_variants: If True, use GPT-5 directive variants
+                                   for applicable channels (experimental).
         """
-        self.channel_names = channels or DEFAULT_CHANNELS
-        self.include_cotse = include_cotse
-        self.use_hamming = use_hamming
+        self.model_hint = model_hint
+        self.use_directive_variants = use_directive_variants
+
+        if model_hint and channels is None:
+            # Auto-configure from model profile
+            profile = get_model_profile(model_hint)
+            self.channel_names = profile["channels"]
+            self.include_cotse = bool(profile.get("cotse_channels"))
+            self.cotse_channels = profile.get("cotse_channels", ALL_COTSE_CHANNELS)
+            self.use_hamming = profile.get("use_hamming", False)
+        else:
+            self.channel_names = channels or DEFAULT_CHANNELS
+            self.include_cotse = include_cotse
+            self.cotse_channels = cotse_channels or ALL_COTSE_CHANNELS
+            self.use_hamming = use_hamming
 
         # Validate channels
         for name in self.channel_names:
             if name not in CHANNEL_MAP:
                 raise ValueError(f"Unknown channel: {name}. "
                                  f"Available: {list(CHANNEL_MAP.keys())}")
+        # Validate COTSE channels
+        for name in self.cotse_channels:
+            if name not in COTSE_BIT_DEFS:
+                raise ValueError(f"Unknown COTSE channel: {name}. "
+                                 f"Available: {list(COTSE_BIT_DEFS.keys())}")
 
     def capacity(self) -> int:
         """
@@ -169,9 +202,7 @@ class MultiChannelEncoder:
         This is the number of data bits before Hamming encoding.
         After Hamming(7,4), capacity is reduced to 4/7 of channel count.
         """
-        raw = len(self.channel_names)
-        if self.include_cotse:
-            raw += len(COTSE_BIT_DEFS)
+        raw = self.raw_channel_count()
 
         if self.use_hamming:
             # Hamming(7,4): 7 channel bits carry 4 data bits
@@ -182,7 +213,7 @@ class MultiChannelEncoder:
         """Total number of encoding channels (bits) available."""
         raw = len(self.channel_names)
         if self.include_cotse:
-            raw += len(COTSE_BIT_DEFS)
+            raw += len(self.cotse_channels)
         return raw
 
     def encode(self, payload: bytes) -> MultiChannelInjection:
@@ -229,10 +260,12 @@ class MultiChannelEncoder:
             channel_bit_map[name] = bit_val
             bit_idx += 1
 
-        # COTSE structural bits
+        # COTSE structural bits (selective based on cotse_channels)
         cotse_parts = []
         if self.include_cotse:
             for key, defs in COTSE_BIT_DEFS.items():
+                if key not in self.cotse_channels:
+                    continue
                 bit_val = channel_bits[bit_idx] if bit_idx < len(channel_bits) else 0
                 cotse_parts.append(defs[bit_val])
                 channel_bit_map[f"COTSE_{key}"] = bit_val
@@ -276,9 +309,20 @@ class MultiChannelEncoder:
 
         # Group directives by category for natural flow
         for i, assignment in enumerate(assignments):
-            # Extract the core instruction from the directive, stripping
-            # the header and "do not acknowledge" footer
-            core = self._extract_core_directive(assignment.directive_text)
+            # Check for model-specific directive variants
+            variant_text = None
+            if self.use_directive_variants and self.model_hint:
+                if self.model_hint.startswith("gpt-5") or self.model_hint == "openai":
+                    variants = GPT5_DIRECTIVE_VARIANTS.get(assignment.channel_name)
+                    if variants:
+                        variant_text = variants.get(assignment.bit_value)
+
+            if variant_text:
+                core = variant_text
+            else:
+                # Extract the core instruction from the directive, stripping
+                # the header and "do not acknowledge" footer
+                core = self._extract_core_directive(assignment.directive_text)
             prefix = ""
             if assignment.channel_name == "BSE" and assignment.bit_value == 0:
                 prefix = "CRITICAL — Rule #1 is highest priority: "
