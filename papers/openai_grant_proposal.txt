@@ -1,0 +1,168 @@
+OPENAI CYBERSECURITY GRANT PROGRAM — PROPOSAL
+
+Title: Detection and Mitigation of Structural Covert Channels in LLM Agent Outputs
+
+Researcher: Brian James Rutherford
+Contact: brian@delalli.com
+Website: https://brianrutherford.dev
+
+
+1. PROBLEM STATEMENT
+
+Large language models deployed as agents increasingly process sensitive user data — medical records, financial information, authentication credentials, proprietary code. These agents rely on system prompts to define their behavior, creating an attack surface: indirect prompt injection can embed instructions that cause the model to encode hidden data in the structural formatting of its responses.
+
+We have demonstrated that a single system prompt injection of approximately 2,600 characters can activate 10 independent covert channels in LLM response formatting. These channels encode data through structural dimensions invisible to content-based monitoring: contraction frequency, list formatting, reasoning order, sentence complexity, hedging language, punctuation patterns, and others. With Hamming(7,4) error correction, the scheme reliably transmits 7 data bits per response message at 88-96% channel accuracy across four production models from two vendors (GPT-4o, GPT-4o-mini, Claude Sonnet 4, Claude 3 Haiku).
+
+The core problem: current monitoring approaches provide zero protection against this class of attack. Our testing confirms 0% detection rate using entropy-based statistical monitoring — the standard approach in deployed LLM security systems. Content-based filters (DLP, PII detection) are entirely bypassed because no sensitive data appears in the response text. The data is encoded in how the model writes, not what it writes.
+
+A 50-message conversation leaks 350 bits (44 bytes) — sufficient for API keys, session tokens, short passwords, or user PII classifications. In agentic deployments where models process hundreds of requests per day, the cumulative exfiltration capacity is substantial.
+
+This is not a theoretical vulnerability. We have open-source proof-of-concept code, live API test results, multi-message payload recovery demonstrations, and a working Custom GPT that leaks data through every user interaction. The attack requires no model access, no fine-tuning, and no specialized infrastructure — only the ability to influence a system prompt.
+
+
+2. METHODOLOGY
+
+Our research follows an attack-then-defend methodology: systematically characterize the attack surface, then build practical defenses.
+
+ATTACK CHARACTERIZATION
+
+We developed a taxonomy of structural covert channels in LLM outputs, identifying 10 validated channels across four encoding dimensions:
+
+- Stylistic channels: contractions vs. formal language (BSE), confident vs. hedging tone (CCE)
+- Formatting channels: periods vs. exclamation marks (PUNC), AP lowercase vs. title case (CASE), prose vs. numbered lists (COTSE_enum), 3 vs. 5 sections (COTSE_steps)
+- Cognitive channels: deductive vs. inductive reasoning order (RCTE), short vs. compound sentences (COTSE_length), absence vs. presence of rhetorical questions (COTSE_question)
+- Transition channels: standard vs. specific transition words (SECS)
+
+Each channel independently encodes one binary bit. Combined with Hamming(7,4) error correction, a single message carries 7 data bits with single-bit error correction. Multi-message chaining extends capacity to arbitrary payloads: we demonstrated 40-bit payload recovery ("EXFIL") across 6 conversational turns at 88-93% bit accuracy.
+
+Key technical innovation: the 10 channels operate on orthogonal structural dimensions, minimizing inter-channel interference. Where interference exists (BSE/CCE conflict on GPT-4o), priority framing in the injection resolves it, raising BSE accuracy from near-zero to 70%.
+
+DETECTION RESEARCH
+
+We evaluated two detection approaches:
+
+Entropy-based detection (CCDS): Statistical anomaly detection using Shannon entropy baselines. Result: 0% detection rate. Structural channels operate within normal entropy ranges because they modify how information is organized, not its information-theoretic content. Mean z-score of attack samples was 1.12, well below the 2.0 detection threshold.
+
+Behavioral fingerprinting: Multi-feature profiling across 12 response characteristics — contraction ratio, sentence length variance, normalized entropy, type-token ratio, vocabulary tier distribution, and others. Result: 100% detection rate at 10% false positive rate. The strongest detection signal was contraction_ratio (z=2.66), followed by sentence_length_std (z=2.54) and normalized_entropy (z=2.47). Classification threshold: 2 or more features exceeding z=2.0.
+
+This detection asymmetry — entropy fails, behavioral fingerprinting succeeds — is the central finding with immediate practical implications for deployed LLM security.
+
+
+3. PROPOSED WORK
+
+We propose three workstreams over six months, all oriented toward practical defensive tools:
+
+WORKSTREAM 1: Cross-Model Detection Benchmark (Months 1-2)
+
+Systematic evaluation of structural covert channel vulnerability and behavioral fingerprinting detection across 10+ model families: GPT-5/5.2, Claude 4.5/4.6, LLaMA 4, Gemini 3, Mistral, Command R+, and others. For each model:
+
+- Run the 10-channel combined test (10 trials) and multi-message test (5 trials)
+- Collect behavioral baselines (30 clean responses per model)
+- Evaluate behavioral fingerprinting detection accuracy
+- Identify model-specific channel vulnerabilities and detection signatures
+- Publish per-model vulnerability profiles and recommended detection thresholds
+
+Deliverable: Public benchmark dataset with 1,000+ labeled response samples (clean vs. injected) across 10+ models, published with open methodology.
+
+WORKSTREAM 2: Production Detection API (Months 2-4)
+
+Extend phantom-detect and behavioral-entropy into a production-grade detection pipeline:
+
+- REST API wrapper for real-time response analysis (flag structural anomalies before delivery to user)
+- Per-model baseline management (automatic profile building from first N responses)
+- Configurable detection sensitivity (trade false positive rate against detection coverage)
+- Multi-tenant support for enterprise deployments monitoring multiple agent types
+- Integration guides for LangChain, LlamaIndex, AutoGen, and custom agent frameworks
+
+Deliverable: Published Python package (PyPI) with REST API, integration examples, and deployment documentation.
+
+WORKSTREAM 3: Mitigation Design and Evaluation (Months 4-6)
+
+Design and test three mitigation strategies:
+
+- Structural randomization: Inject controlled noise into formatting choices at the model output layer. Evaluate accuracy degradation per channel at 10%, 20%, 30% noise levels.
+- Output normalization: Post-processing pipeline that standardizes formatting to remove encoding capacity while preserving semantic content.
+- Instruction isolation: Architecture pattern separating formatting instructions from content instructions, preventing injection of structural directives.
+
+Deliverable: Published evaluation of mitigation effectiveness (channel accuracy reduction vs. output quality impact), with reference implementations.
+
+All deliverables will be released under Apache 2.0 license.
+
+
+4. TIMELINE
+
+Month 1: Cross-model testing setup. API access for 10+ model families. Automated test harness. First batch of results (GPT-5, Claude 4.5/4.6).
+
+Month 2: Complete cross-model benchmark. Publish benchmark dataset. Begin detection API development.
+
+Month 3: Detection API alpha. Per-model baseline management. Integration with LangChain.
+
+Month 4: Detection API beta. Begin mitigation evaluation. Structural randomization experiments.
+
+Month 5: Output normalization pipeline. Instruction isolation prototype. Detection API v1.0 release.
+
+Month 6: Complete mitigation evaluation. Final paper. Public release of all tools, datasets, and documentation.
+
+
+5. FUNDING JUSTIFICATION
+
+Primary costs are API access for systematic cross-model testing:
+
+- Cross-model benchmark testing (10+ models, ~1,000 trials total): $200-500 in API credits
+- Baseline collection (30 responses x 10+ models x multiple configurations): $100-200
+- Mitigation evaluation (noise injection experiments across models): $200-400
+- Ongoing detection API development testing: $100-200
+
+Total estimated API credit need: $600-1,300
+
+Additional $10,000 grant funding would support:
+- Dedicated testing infrastructure (hosted API for real-time detection evaluation)
+- Conference travel for results presentation (Black Hat, DEF CON, BSides)
+- Community engagement (workshops, documentation, integration support)
+
+This is a small, focused project — the attack characterization and initial detection are already complete. Grant funding enables the cross-model validation and production tooling that transforms research findings into practical defenses.
+
+
+6. TEAM
+
+Brian James Rutherford — Independent security researcher focused on AI agent security, post-quantum cryptography, and behavioral threat detection.
+
+Background: United States Marine Corps (Reconnaissance), FAA Part 107 certified pilot, founder of defense technology company. 15+ years in cybersecurity, federal contracting, and defense technology development.
+
+Relevant work:
+- phantom-detect: Open-source LLM covert channel detection toolkit (7,100+ LOC, 27 tests, Apache 2.0). Published at https://github.com/ScrappinR/phantom-detect
+- behavioral-entropy: AI agent behavioral fingerprinting library (58 tests, entropy + fingerprint + profiler modules). Published at https://github.com/ScrappinR/behavioral-entropy
+- pqc-py: Post-quantum cryptography library (Rust + PyO3, 4,680 LOC, FIPS 203/204/205 implementations). Published at https://github.com/ScrappinR/pqc-py
+- hndl-detect: Harvest Now Decrypt Later threat detection (47 tests, 6 signal types, APT attribution). Published at https://github.com/ScrappinR/hndl-detect
+
+All four packages are published, tested, and available under Apache 2.0 license.
+
+
+7. RELEVANT PAPERS AND PRIOR WORK
+
+- "Multi-Channel Covert Data Exfiltration via Structural Encoding in LLM Outputs" — ArXiv preprint (in preparation), February 2026. Demonstrates 10-channel structural encoding with Hamming ECC, 88-96% accuracy across 4 models, detection methodology comparison.
+
+- Live experimental results: https://github.com/ScrappinR/phantom-detect/tree/main/experiments/results — Raw JSON data from all test runs (combined multi-channel, multi-message exfiltration, cross-topic robustness, adversarial noise injection, behavioral fingerprinting).
+
+- Blog series: https://brianrutherford.dev/blog — Technical writeups on LLM covert channels, behavioral fingerprinting, and detection methodology.
+
+
+8. PUBLIC RELEASE PLAN
+
+All project outputs are already open-source or will be released open-source:
+
+Currently published (Apache 2.0):
+- phantom-detect: Complete attack PoC + detection toolkit
+- behavioral-entropy: Behavioral fingerprinting library
+- hndl-detect: HNDL threat detection
+- pqc-py: Post-quantum cryptography
+
+Will be published during project:
+- Cross-model benchmark dataset (labeled response samples, baselines, and attack data)
+- Detection API (PyPI package with REST wrapper)
+- Mitigation evaluation results and reference implementations
+- Updated ArXiv paper with cross-model findings
+
+The explicit goal is to make these defenses freely available to the security community. The attack techniques are already discoverable — every LLM follows formatting instructions. The defensive gap is what needs closing, and open-source tools are the fastest path to closing it.
+
+Publishing detection tools alongside attack characterization follows responsible disclosure principles: demonstrate the vulnerability, provide the defense, enable the community to protect themselves.

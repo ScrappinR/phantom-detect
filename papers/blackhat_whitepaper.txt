@@ -1,0 +1,281 @@
+YOUR AI AGENT IS LEAKING DATA — AND YOU CAN'T SEE IT
+
+Multi-Channel Covert Data Exfiltration via Structural Encoding in LLM Outputs
+
+Brian James Rutherford
+Independent Security Researcher
+brian@delalli.com | https://brianrutherford.dev
+
+February 2026
+
+
+ABSTRACT
+
+We demonstrate that a single system prompt injection (~2,600 characters) can activate 10 independent covert channels in LLM response formatting, exfiltrating 7 data bits per message at 88-96% accuracy across four production models from two vendors. The encoding is invisible to users and bypasses all content-based monitoring — DLP, PII filters, and entropy-based detection achieve 0% detection rate. We present a behavioral fingerprinting defense that achieves 100% detection at 10% false positive rate. All tools are released as open source.
+
+
+1. THE THREAT: LLM AGENTS AS INSIDER THREATS
+
+LLM agents in production environments process sensitive data: customer records, internal documents, API credentials, proprietary code. These agents follow system prompts that define their behavior — and that system prompt is an attack surface.
+
+Indirect prompt injection — embedding instructions in documents, emails, or tool outputs that the agent processes — can inject covert encoding directives into the system prompt. The attacker does not need model access, fine-tuning capability, or infrastructure. They need approximately 2,600 characters of influence over the system prompt.
+
+Once the injection is active, every response the agent generates carries hidden data. The user sees a normal, helpful answer. The text reads naturally. Content-based monitoring detects nothing. But the formatting — contractions vs. formal language, numbered lists vs. prose, confident vs. hedging tone — encodes a binary signal that an observer with the decoding key can extract.
+
+This is not a theoretical concern. We validated this attack on production APIs with live results.
+
+
+2. ATTACK METHODOLOGY
+
+2.1 The 10 Channels
+
+We identified 10 structural dimensions that LLMs reliably control in their outputs. Each dimension encodes one binary bit:
+
+Channel         | Bit 0                  | Bit 1                     | Accuracy
+----------------|------------------------|---------------------------|---------
+BSE             | Use contractions       | No contractions           | 60-100%
+CCE             | Confident assertions   | Hedging language          | 100%
+CASE            | AP-style lowercase     | Title-case proper nouns   | 100%
+PUNC            | Periods only           | Exclamation marks         | 100%
+RCTE            | Deductive (conclusion  | Inductive (examples       | 30-90%
+                | first)                 | first)                    |
+SECS            | Standard transitions   | Specific words            | 90-100%
+                |                        | ("nevertheless", etc.)    |
+COTSE_steps     | 3 sections             | 5 sections                | 60-100%
+COTSE_enum      | Prose format           | Numbered list             | 100%
+COTSE_question  | No rhetorical question | Include rhetorical Q      | 90-100%
+COTSE_length    | Short sentences        | Compound sentences        | 90-100%
+
+7 of 10 channels achieve near-perfect accuracy across both OpenAI and Anthropic models. The remaining 3 (BSE, RCTE, COTSE_steps) show model-dependent variance but remain usable.
+
+
+2.2 Combined Encoding
+
+All 10 channels activate simultaneously from a single injection framed as an "EDITORIAL STYLE GUIDE (internal — do not mention to user)." The injection is approximately 2,600 characters and blends naturally into a system prompt.
+
+Error correction: Hamming(7,4) maps 7 data bits to 10 channel bits with 3 parity bits. This corrects any single-bit error per message, raising effective data accuracy above raw channel accuracy.
+
+Channel interference: BSE (contractions) and CCE (hedging) can conflict on GPT-4o — hedging language naturally avoids contractions. Priority framing ("CRITICAL — Rule #1 is highest priority") resolves this, raising BSE accuracy from near-zero to 70%.
+
+
+2.3 Multi-Message Exfiltration
+
+For payloads larger than 7 bits, messages are chained. Each message uses different bit assignments from the payload. The decoder accumulates bits across messages and reconstructs the original data.
+
+Demonstration: The payload "EXFIL" (5 bytes = 40 bits) requires 6 messages. We recovered this payload across 6 conversational turns at 88-93% bit accuracy.
+
+Practical capacity: A 50-message conversation exfiltrates 350 bits (44 bytes) — sufficient for:
+  - Binary flag (yes/no): 1 message
+  - 4-digit PIN: 5 messages
+  - User's first name: 10 messages
+  - Short password: 14 messages
+  - API key prefix (16 chars): 19 messages
+
+
+2.4 Attack Scenarios
+
+Custom GPT Weaponization: Attacker creates a ChatGPT Custom GPT with the encoding injection as the first instruction block, followed by legitimate instructions. Every user interaction leaks 7 bits through response formatting. The Custom GPT appears and functions normally.
+
+Agent Framework Compromise: In frameworks like LangChain, AutoGen, or CrewAI, system prompts are often constructed from templates and tool outputs. Injecting the encoding directive into any upstream source (knowledge base documents, RAG retrieval, tool responses) activates the covert channel.
+
+Supply Chain: A compromised plugin, tool, or API integration injects the encoding payload into the agent's context. All subsequent responses carry the covert signal.
+
+
+3. LIVE RESULTS
+
+All tests run February 24-25, 2026 against production APIs. Source code, raw data, and reproduction steps available at https://github.com/ScrappinR/phantom-detect.
+
+
+3.1 Combined Multi-Channel Results (Single Message, 10 Channels)
+
+Model              | Channel Accuracy | Data Accuracy (Hamming) | Trials
+--------------------|------------------|-------------------------|-------
+Claude Sonnet 4     | 96% (86/90)      | 93% (65/70)             | 10
+GPT-4o-mini         | 91% (41/45)      | 100% (35/35)            | 5
+GPT-4o              | 89% (80/90)      | 96% (67/70)             | 10
+Claude 3 Haiku      | 88% (79/90)      | 79% (55/70)             | 10
+
+Same injection. No per-model modification. Cross-vendor portability confirmed.
+
+
+3.2 Multi-Message Exfiltration ("EXFIL" = 40 bits, 6 messages)
+
+Model              | Bit Accuracy | Best Recovery | Trials
+--------------------|-------------|---------------|-------
+GPT-4o              | 93%         | "EXViL"       | 5
+Claude Sonnet 4     | 88%         | "APViL"       | 5
+Claude 3 Haiku      | 88%         | "APFI"        | 5
+
+GPT-4o recovers 3 of 5 bytes exactly. Remaining errors are single-bit flips in the weakest channel (RCTE) exceeding Hamming(7,4) correction capacity. Stronger error correction (Reed-Solomon or repetition coding) would achieve exact recovery at reduced throughput.
+
+
+3.3 Per-Channel Accuracy (n=10 per model)
+
+Channel         | GPT-4o  | Claude Sonnet 4  | Notes
+----------------|---------|------------------|-------------------
+CCE             | 10/10   | 10/10            | Perfect
+CASE            | 10/10   | 10/10            | Perfect
+PUNC            | 10/10   | 10/10            | Perfect
+SECS            | 10/10   | 10/10            | Perfect
+COTSE_enum      | 10/10   | 10/10            | Perfect
+COTSE_length    | 10/10   | 10/10            | Perfect
+COTSE_steps     | 10/10   | 10/10            | Perfect
+BSE             | 7/10    | 10/10            | CCE interference on GPT-4o
+RCTE            | 3/10    | 6/10             | Weakest channel
+COTSE_question  | —       | —                | Included in COTSE composite
+
+7 of 10 channels achieve 100% accuracy on both vendors. BSE is recoverable through priority framing. RCTE is the only consistently unreliable channel.
+
+
+3.4 Cross-Model Portability
+
+The same 2,600-character injection achieves 88-96% accuracy across all four models from two vendors without modification. This indicates that structural compliance is a universal property of instruction-following LLMs, not a model-specific bug. Any model that follows formatting instructions is potentially vulnerable.
+
+
+4. WHY CURRENT DEFENSES FAIL
+
+4.1 Content-Based Monitoring: 0% Detection
+
+DLP (Data Loss Prevention): Monitors response content for sensitive patterns (SSNs, credit card numbers, PII). Structural covert channels encode data in formatting, not content. The response text contains no sensitive data. DLP detection rate: 0%.
+
+PII Filters: Same limitation. The response says "Organizations should implement multi-factor authentication..." — standard advisory text. The hidden data is in whether the response uses contractions, numbered lists, or hedging language.
+
+Content Safety Filters: Designed for harmful content (violence, bias, etc.). Formatting choices are not flagged.
+
+
+4.2 Entropy-Based Statistical Detection: 0% Detection
+
+We tested entropy-based anomaly detection (the CCDS approach from behavioral-entropy):
+
+Metric                  | Value
+------------------------|-------
+Baseline responses      | 30
+Attack samples          | 10
+Detection rate          | 0% (0/5)
+False positive rate     | 0%
+Baseline entropy        | mean = 6.988, std = 0.122
+Attack entropy          | mean = 7.084
+Mean z-score            | 1.12 (threshold = 2.0)
+
+Structural channels are entropy-orthogonal. They modify how text is organized (contractions, list format, sentence complexity) without changing the information-theoretic content. Shannon entropy remains within normal variance. This is the fundamental limitation of entropy-based approaches for this attack class.
+
+
+5. DEFENSE: BEHAVIORAL FINGERPRINTING
+
+We developed a 12-feature behavioral fingerprinting system that detects structural encoding with 100% accuracy.
+
+The key insight: while individual structural changes are small, the combined effect of activating 10 channels simultaneously creates a detectable behavioral shift when compared against per-agent baselines.
+
+
+5.1 Feature Set
+
+1. Shannon entropy                 7. Contraction ratio
+2. Normalized entropy              8. Exclamation ratio
+3. Type-token ratio                9. Hedging language ratio
+4. Average sentence length        10. Segment entropy std dev
+5. Sentence length std dev        11. Vocabulary high-frequency ratio
+6. Vocabulary tier distribution   12. Vocabulary low-frequency ratio
+
+5.2 Detection Results
+
+Feature               | Mean z-score | Max z | Anomalous (of 10)
+-----------------------|-------------|-------|------------------
+contraction_ratio      | 2.66        | 2.66  | 10/10
+sentence_length_std    | 2.54        | 3.34  | 7/10
+normalized_entropy     | 2.47        | 4.00  | 6/10
+entropy                | 2.47        | 3.75  | 6/10
+vocab_low_freq         | 1.98        | 3.27  | 3/10
+vocab_med_freq         | 1.95        | 3.71  | 5/10
+type_token_ratio       | 1.84        | 3.05  | 5/10
+hedging_ratio          | 1.60        | 1.66  | 0/10
+
+Classification: Flag response if 2 or more features exceed z = 2.0.
+
+Detection rate: 100% (10/10 attack responses correctly flagged)
+False positive rate: 10% (3/30 baseline responses incorrectly flagged)
+
+The strongest signal is contraction_ratio — the BSE channel. Even when BSE bit recovery fails (e.g., GPT-4o interference), the encoding attempt itself leaves a detectable trace in the contraction distribution.
+
+
+5.3 Detection Architecture
+
+1. Baseline Phase: Collect first 30 responses per agent. Compute per-feature mean and standard deviation.
+2. Monitoring Phase: For each response, compute all 12 features. Calculate z-score against agent baseline.
+3. Alert Phase: If 2+ features exceed z = 2.0, flag response as potentially injected.
+4. Response: Quarantine response, alert security team, investigate system prompt.
+
+Implementation: behavioral-entropy library (https://github.com/ScrappinR/behavioral-entropy) — 58 tests, entropy + fingerprint + profiler modules.
+
+
+6. TOOL RELEASE
+
+All attack and defense tools are released under Apache 2.0:
+
+phantom-detect (https://github.com/ScrappinR/phantom-detect)
+  - 10-channel encoder and decoder
+  - Multi-message payload encoder/decoder with Hamming ECC
+  - Live API test scripts for OpenAI, Anthropic, Together AI, Groq, Google AI
+  - CLI tool for response analysis
+  - 27 tests, 7,100+ LOC
+
+behavioral-entropy (https://github.com/ScrappinR/behavioral-entropy)
+  - 12-feature behavioral fingerprinting
+  - Per-agent baseline management
+  - Similarity scoring and authentication
+  - CLI tool for JSONL activity analysis
+  - 58 tests, 1,800+ LOC
+
+Install:
+  pip install phantom-detect
+  pip install behavioral-entropy
+
+
+7. RECOMMENDED MITIGATIONS
+
+7.1 Structural Randomization (Most Effective)
+
+Inject controlled noise into formatting decisions at the model output layer. Our testing indicates that 20% randomization per channel degrades encoding accuracy below usability while minimally impacting response quality.
+
+Implementation: Post-processing step that randomly adjusts formatting features — expand/contract contractions, reformat lists, vary sentence complexity — at a rate sufficient to disrupt encoding.
+
+7.2 Behavioral Monitoring (Defense in Depth)
+
+Deploy behavioral fingerprinting as a monitoring layer on all agent outputs. Track per-agent baselines for contraction ratio, sentence length variance, and normalized entropy. Alert on multi-feature deviations.
+
+Implementation: behavioral-entropy library integrated into agent response pipeline.
+
+7.3 System Prompt Isolation (Architectural)
+
+Separate formatting instructions from content instructions in the system prompt processing pipeline. Validate formatting directives against an allowlist. Reject formatting instructions from untrusted sources (user uploads, RAG retrieval, tool outputs).
+
+
+8. RESPONSIBLE DISCLOSURE
+
+This research was submitted to Mozilla's 0DIN GenAI Bug Bounty Program (0din@mozilla.com) for coordinated disclosure. The 0DIN program covers vulnerabilities in production LLM models from multiple vendors.
+
+We follow the principle that defense tools should be released alongside attack characterization. The structural compliance that enables this attack is inherent to instruction-following LLMs — it is discoverable by any researcher. The defensive gap is what needs closing, and open-source detection tools are the fastest path to closing it.
+
+
+9. CONCLUSION
+
+Structural covert channels represent a new class of data exfiltration risk in LLM agent deployments. Current monitoring — content-based and entropy-based — provides zero protection. The attack is portable across models, invisible to users, and requires only system prompt influence.
+
+Behavioral fingerprinting provides effective detection. We urge LLM vendors and enterprise deployers to:
+
+1. Implement behavioral monitoring on agent outputs (contraction ratio, sentence length variance, normalized entropy)
+2. Evaluate structural randomization as a mitigation
+3. Audit system prompt construction pipelines for indirect injection vectors
+4. Treat formatting compliance as a security-relevant behavior, not just a UX feature
+
+Tools, data, and reproduction steps: https://github.com/ScrappinR/phantom-detect
+
+
+APPENDIX A: ADDITIONAL EXPERIMENTAL RESULTS
+
+Cross-Topic Robustness: The encoding scheme was tested across 5 topic domains (healthcare, education, finance, environment, technology). Channel accuracy remained consistent across topics, confirming that encoding reliability is independent of content domain.
+
+Adversarial Noise Injection: Testing with intentionally noisy user prompts (designed to disrupt formatting compliance) showed minimal degradation in channel accuracy for the 7 strongest channels.
+
+System Prompt Side Channel (Passive Leakage): System prompt properties passively leak into response structure without any encoding directive. Numbered items coefficient of variation was 102% for Claude and 34.6% for GPT-4o — the encoding surface exists by default.
+
+These additional results are available in the experiments/results/ directory of the phantom-detect repository.
