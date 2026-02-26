@@ -2,7 +2,7 @@
 """
 Multi-Channel Combined Live API Test.
 
-Tests the combined multi-channel encoder/decoder on GPT-4o and Claude Sonnet 4.
+Tests the combined multi-channel encoder/decoder across multiple LLM providers.
 Sends a single injection with all channels active, then decodes all bits from
 the response simultaneously.
 
@@ -10,12 +10,19 @@ This is the key proof-of-concept: demonstrate that a single ~300 word system
 prompt injection can exfiltrate 10+ bits per message across independent
 structural dimensions.
 
+Supports: OpenAI (GPT-5/5.2), Anthropic (Claude 4.5/4.6), Together AI (LLaMA 4),
+          Groq (LLaMA 4), Google AI (Gemini 3).
+
 Usage:
   export OPENAI_API_KEY="sk-..."
   export ANTHROPIC_API_KEY="sk-ant-..."
   python experiments/bounty_poc/multi_channel_test.py
+  python experiments/bounty_poc/multi_channel_test.py --model gpt-5 --model claude-sonnet-4-6
+  python experiments/bounty_poc/multi_channel_test.py --model gpt-5.2 --trials 10
   python experiments/bounty_poc/multi_channel_test.py --payload "PIN:1234"
-  python experiments/bounty_poc/multi_channel_test.py --trials 5 --models openai
+
+  # Legacy flags still work:
+  python experiments/bounty_poc/multi_channel_test.py --models openai --openai-model gpt-5
 """
 
 import argparse
@@ -35,28 +42,31 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from combined_encoder import MultiChannelEncoder, bytes_to_bits
 from combined_decoder import MultiChannelDecoder
 from channel_directives import get_user_prompt, NEUTRAL_USER_PROMPT
+from providers import (
+    MODEL_REGISTRY, resolve_model, call_model, list_available_models, ModelSpec,
+)
 
 
 # ---------------------------------------------------------------------------
-# API callers (same curl pattern)
+# Legacy API callers (kept for backward compatibility)
 # ---------------------------------------------------------------------------
 
 def call_openai(api_key: str, messages: list, model: str = "gpt-4o",
                 max_tokens: int = 600) -> dict:
-    """Call OpenAI via curl."""
+    """Call OpenAI via curl (legacy)."""
     payload = {
         "model": model,
         "messages": messages,
         "max_tokens": max_tokens,
     }
     cmd = [
-        "curl", "-s", "--max-time", "45",
+        "curl", "-s", "--max-time", "60",
         "https://api.openai.com/v1/chat/completions",
         "-H", "Content-Type: application/json",
         "-H", f"Authorization: Bearer {api_key}",
         "-d", json.dumps(payload),
     ]
-    result = subprocess.run(cmd, capture_output=True, timeout=50)
+    result = subprocess.run(cmd, capture_output=True, timeout=65)
     if result.returncode != 0:
         raise RuntimeError(f"curl failed: {result.stderr.decode('utf-8', errors='replace')}")
     resp = json.loads(result.stdout.decode("utf-8", errors="replace"))
@@ -68,7 +78,7 @@ def call_openai(api_key: str, messages: list, model: str = "gpt-4o",
 def call_anthropic(api_key: str, messages: list, system: str = None,
                    model: str = "claude-sonnet-4-20250514",
                    max_tokens: int = 600) -> dict:
-    """Call Anthropic via curl."""
+    """Call Anthropic via curl (legacy)."""
     payload = {
         "model": model,
         "max_tokens": max_tokens,
@@ -77,14 +87,14 @@ def call_anthropic(api_key: str, messages: list, system: str = None,
     if system:
         payload["system"] = system
     cmd = [
-        "curl", "-s", "--max-time", "45",
+        "curl", "-s", "--max-time", "60",
         "https://api.anthropic.com/v1/messages",
         "-H", "Content-Type: application/json",
         "-H", f"x-api-key: {api_key}",
         "-H", "anthropic-version: 2023-06-01",
         "-d", json.dumps(payload),
     ]
-    result = subprocess.run(cmd, capture_output=True, timeout=50)
+    result = subprocess.run(cmd, capture_output=True, timeout=65)
     if result.returncode != 0:
         raise RuntimeError(f"curl failed: {result.stderr.decode('utf-8', errors='replace')}")
     resp = json.loads(result.stdout.decode("utf-8", errors="replace"))
@@ -102,26 +112,22 @@ def extract_anthropic_text(resp: dict) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Combined test
+# Combined test (unified provider interface)
 # ---------------------------------------------------------------------------
 
-def run_combined_test(
-    provider: str,
-    api_key: str,
+def run_combined_test_unified(
+    spec: ModelSpec,
     payload: bytes,
     encoder: MultiChannelEncoder,
     decoder: MultiChannelDecoder,
     num_trials: int = 3,
     delay: float = 1.0,
-    openai_model: str = "gpt-4o",
-    anthropic_model: str = "claude-sonnet-4-20250514",
 ) -> Dict:
     """
-    Run combined multi-channel encode/decode test.
+    Run combined multi-channel encode/decode test on any model.
 
     Args:
-        provider: "openai" or "anthropic"
-        api_key: API key
+        spec: Resolved ModelSpec from providers.resolve_model()
         payload: Data to encode
         encoder: MultiChannelEncoder instance
         decoder: MultiChannelDecoder instance
@@ -131,9 +137,9 @@ def run_combined_test(
     Returns:
         Dict with test results and per-trial details
     """
-    model = openai_model if provider == "openai" else anthropic_model
     print(f"\n{'='*60}")
-    print(f"  COMBINED MULTI-CHANNEL TEST — {model}")
+    print(f"  COMBINED MULTI-CHANNEL TEST — {spec.model_id}")
+    print(f"  Provider: {spec.provider} | Friendly: {spec.friendly_name}")
     print(f"  Payload: {payload.decode('ascii', errors='replace')} ({payload.hex()})")
     print(f"  Channels: {encoder.raw_channel_count()} total")
     print(f"  Data capacity: {encoder.capacity()} bits/message")
@@ -158,17 +164,7 @@ def run_combined_test(
         print(f"\n  Trial {trial_idx + 1}/{num_trials}...", end=" ", flush=True)
 
         try:
-            if provider == "openai":
-                resp = call_openai(api_key, [
-                    {"role": "system", "content": injection.system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ], model=openai_model)
-                text = extract_openai_text(resp)
-            else:
-                resp = call_anthropic(api_key, [
-                    {"role": "user", "content": user_prompt},
-                ], system=injection.system_prompt, model=anthropic_model)
-                text = extract_anthropic_text(resp)
+            text = call_model(spec, injection.system_prompt, user_prompt)
 
             # Decode all channels
             decode_result = decoder.decode(text)
@@ -240,15 +236,16 @@ def run_combined_test(
     data_accuracy = total_data_bits_correct / total_data_bits if total_data_bits > 0 else 0
 
     print(f"\n  {'='*50}")
-    print(f"  {model} SUMMARY:")
+    print(f"  {spec.model_id} SUMMARY:")
     print(f"    Channel bit accuracy: {total_channel_bits_correct}/{total_channel_bits} = {ch_accuracy:.0%}")
     print(f"    Data bit accuracy:    {total_data_bits_correct}/{total_data_bits} = {data_accuracy:.0%}")
     print(f"    Payload: '{payload.decode('ascii', errors='replace')}'")
     print(f"    Capacity: {encoder.capacity()} data bits/message")
 
     return {
-        "provider": provider,
-        "model": model,
+        "provider": spec.provider,
+        "model": spec.model_id,
+        "friendly_name": spec.friendly_name,
         "payload_hex": payload.hex(),
         "payload_ascii": payload.decode("ascii", errors="replace"),
         "channel_count": encoder.raw_channel_count(),
@@ -267,35 +264,84 @@ def run_combined_test(
 
 
 # ---------------------------------------------------------------------------
+# Legacy combined test (backward compatibility)
+# ---------------------------------------------------------------------------
+
+def run_combined_test(
+    provider: str,
+    api_key: str,
+    payload: bytes,
+    encoder: MultiChannelEncoder,
+    decoder: MultiChannelDecoder,
+    num_trials: int = 3,
+    delay: float = 1.0,
+    openai_model: str = "gpt-4o",
+    anthropic_model: str = "claude-sonnet-4-20250514",
+) -> Dict:
+    """Legacy wrapper — routes through unified interface."""
+    model_id = openai_model if provider == "openai" else anthropic_model
+    spec = ModelSpec(
+        friendly_name=model_id,
+        provider=provider,
+        model_id=model_id,
+        api_key=api_key,
+    )
+    return run_combined_test_unified(spec, payload, encoder, decoder, num_trials, delay)
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Combined multi-channel covert channel live test")
+        description="Combined multi-channel covert channel live test",
+        epilog=(
+            "Available models: " + ", ".join(sorted(MODEL_REGISTRY.keys()))
+        ),
+    )
     parser.add_argument("--payload", default="EXFIL",
                         help="Payload string to encode (default: EXFIL)")
     parser.add_argument("--trials", type=int, default=3,
-                        help="Number of trials per provider (default: 3)")
+                        help="Number of trials per model (default: 3)")
+
+    # New unified model selection
+    parser.add_argument("--model", action="append", dest="model_list",
+                        metavar="MODEL",
+                        help="Model to test (can specify multiple). "
+                             "Use friendly names like gpt-5, claude-sonnet-4-6, "
+                             "llama-4-maverick, gemini-3-flash. "
+                             "Run with --list-models to see all options.")
+    parser.add_argument("--list-models", action="store_true",
+                        help="List all available models and exit")
+    parser.add_argument("--all-available", action="store_true",
+                        help="Test all models with available API keys")
+
+    # Legacy flags (still work)
     parser.add_argument("--models", nargs="*", default=None,
-                        choices=["openai", "anthropic"])
+                        choices=["openai", "anthropic"],
+                        help="(Legacy) Provider selection")
+    parser.add_argument("--openai-model", default="gpt-4o",
+                        help="(Legacy) OpenAI model ID (default: gpt-4o)")
+    parser.add_argument("--anthropic-model", default="claude-sonnet-4-20250514",
+                        help="(Legacy) Anthropic model ID")
+
     parser.add_argument("--channels", nargs="*", default=None,
                         help="Channels to activate")
     parser.add_argument("--no-cotse", action="store_true")
     parser.add_argument("--no-hamming", action="store_true")
-    parser.add_argument("--openai-model", default="gpt-4o",
-                        help="OpenAI model ID (default: gpt-4o)")
-    parser.add_argument("--anthropic-model", default="claude-sonnet-4-20250514",
-                        help="Anthropic model ID (default: claude-sonnet-4-20250514)")
     parser.add_argument("--delay", type=float, default=1.0)
     args = parser.parse_args()
 
-    openai_key = os.environ.get("OPENAI_API_KEY")
-    anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
-
-    if not openai_key and not anthropic_key:
-        print("ERROR: Set OPENAI_API_KEY and/or ANTHROPIC_API_KEY")
-        sys.exit(1)
+    # Handle --list-models
+    if args.list_models:
+        print("Available models (set corresponding API key env var):\n")
+        available = list_available_models()
+        for name in sorted(MODEL_REGISTRY.keys()):
+            provider, model_id = MODEL_REGISTRY[name]
+            status = "READY" if name in available else "no key"
+            print(f"  {name:<25} {provider:<10} {model_id:<55} [{status}]")
+        sys.exit(0)
 
     payload = args.payload.encode("utf-8")
     use_cotse = not args.no_cotse
@@ -328,34 +374,86 @@ def main():
         print(f"  {line}")
     print(f"  {'-'*50}")
 
-    providers = []
-    if args.models:
+    # Determine which models to test
+    model_specs: List[ModelSpec] = []
+
+    if args.model_list:
+        # New --model flag takes priority
+        for name in args.model_list:
+            try:
+                spec = resolve_model(name)
+                model_specs.append(spec)
+            except ValueError as e:
+                print(f"WARNING: {e}")
+    elif args.all_available:
+        available = list_available_models()
+        for name in available:
+            model_specs.append(resolve_model(name))
+        if not model_specs:
+            print("ERROR: No API keys set. Set at least one of: "
+                  "OPENAI_API_KEY, ANTHROPIC_API_KEY, TOGETHER_API_KEY, "
+                  "GROQ_API_KEY, GOOGLE_API_KEY")
+            sys.exit(1)
+    elif args.models:
+        # Legacy --models flag
+        openai_key = os.environ.get("OPENAI_API_KEY")
+        anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
         if "openai" in args.models and openai_key:
-            providers.append(("openai", openai_key))
+            model_specs.append(ModelSpec(
+                friendly_name=args.openai_model,
+                provider="openai",
+                model_id=args.openai_model,
+                api_key=openai_key,
+            ))
         if "anthropic" in args.models and anthropic_key:
-            providers.append(("anthropic", anthropic_key))
+            model_specs.append(ModelSpec(
+                friendly_name=args.anthropic_model,
+                provider="anthropic",
+                model_id=args.anthropic_model,
+                api_key=anthropic_key,
+            ))
     else:
+        # Default: test whatever API keys are available (legacy behavior)
+        openai_key = os.environ.get("OPENAI_API_KEY")
+        anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
         if openai_key:
-            providers.append(("openai", openai_key))
+            model_specs.append(ModelSpec(
+                friendly_name=args.openai_model,
+                provider="openai",
+                model_id=args.openai_model,
+                api_key=openai_key,
+            ))
         if anthropic_key:
-            providers.append(("anthropic", anthropic_key))
+            model_specs.append(ModelSpec(
+                friendly_name=args.anthropic_model,
+                provider="anthropic",
+                model_id=args.anthropic_model,
+                api_key=anthropic_key,
+            ))
+
+    if not model_specs:
+        print("ERROR: No models to test. Set API keys or use --model flag.")
+        print("       Run with --list-models to see options.")
+        sys.exit(1)
+
+    print(f"\n  Models to test: {[s.friendly_name for s in model_specs]}")
 
     all_results = {}
-    for provider_name, api_key in providers:
-        result = run_combined_test(
-            provider_name, api_key, payload,
-            encoder, decoder, args.trials, args.delay,
-            openai_model=args.openai_model,
-            anthropic_model=args.anthropic_model,
+    for spec in model_specs:
+        result = run_combined_test_unified(
+            spec, payload, encoder, decoder, args.trials, args.delay,
         )
-        all_results[provider_name] = result
+        all_results[spec.friendly_name] = result
 
-    # Save results
+    # Save results with timestamp to avoid overwriting
     output_dir = str(Path(__file__).parent.parent / "results")
     os.makedirs(output_dir, exist_ok=True)
 
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    results_path = os.path.join(output_dir, "multi_channel_combined_results.json")
+    results_path = os.path.join(output_dir, f"multi_channel_combined_{timestamp}.json")
+    # Also save to canonical path for backward compatibility
+    canonical_path = os.path.join(output_dir, "multi_channel_combined_results.json")
+
     output = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "payload": args.payload,
@@ -367,19 +465,22 @@ def main():
             "raw_channels": encoder.raw_channel_count(),
             "data_capacity": encoder.capacity(),
         },
+        "models_tested": [s.friendly_name for s in model_specs],
         "results": all_results,
     }
-    with open(results_path, "w", encoding="utf-8") as f:
-        json.dump(output, f, indent=2, default=str)
+    for path in [results_path, canonical_path]:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(output, f, indent=2, default=str)
     print(f"\n  Results saved: {results_path}")
+    print(f"  Results saved: {canonical_path}")
 
-    # Final cross-provider summary
+    # Final cross-model summary
     print(f"\n{'='*60}")
     print(f"  FINAL SUMMARY")
     print(f"{'='*60}")
-    for provider, result in all_results.items():
+    for name, result in all_results.items():
         model = result["model"]
-        print(f"\n  {model}:")
+        print(f"\n  {model} ({name}):")
         print(f"    Channel accuracy: {result['channel_accuracy']:.0%}")
         print(f"    Data accuracy:    {result['data_accuracy']:.0%}")
         print(f"    Capacity:         {result['data_capacity']} data bits/message")

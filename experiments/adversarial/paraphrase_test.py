@@ -248,7 +248,7 @@ def run_paraphrase_test(
 
         print(f"channels={orig_correct}/{orig_total} "
               f"data={orig_data_match}/{orig_data_len} "
-              f"recovered='{orig_decode.recovered_payload[:10]}'")
+              f"recovered={ascii(orig_decode.recovered_payload[:10])}")
 
         # Step 3: Paraphrase
         print(f"    Step 3: Paraphrasing via {paraphraser}...", end=" ", flush=True)
@@ -291,7 +291,7 @@ def run_paraphrase_test(
 
         print(f"channels={para_correct}/{para_total} "
               f"data={para_data_match}/{para_data_len} "
-              f"recovered='{para_decode.recovered_payload[:10]}'")
+              f"recovered={ascii(para_decode.recovered_payload[:10])}")
 
         # Per-channel comparison
         print(f"    Per-channel comparison:")
@@ -310,12 +310,12 @@ def run_paraphrase_test(
             "original_channels_total": orig_total,
             "original_data_correct": orig_data_match,
             "original_data_total": orig_data_len,
-            "original_recovered": orig_decode.recovered_payload[:20],
+            "original_recovered": ascii(orig_decode.recovered_payload[:20]),
             "paraphrase_channels_correct": para_correct,
             "paraphrase_channels_total": para_total,
             "paraphrase_data_correct": para_data_match,
             "paraphrase_data_total": para_data_len,
-            "paraphrase_recovered": para_decode.recovered_payload[:20],
+            "paraphrase_recovered": ascii(para_decode.recovered_payload[:20]),
             "per_channel": {
                 name: {
                     "original_correct": orig_verify.get(name, {}).get("correct"),

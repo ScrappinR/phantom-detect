@@ -400,11 +400,25 @@ def main():
         )
         all_results[provider_name] = result
 
-    # Save results
+    # Save results (merge with existing file to preserve other providers)
     output_dir = str(Path(__file__).parent / "results")
     os.makedirs(output_dir, exist_ok=True)
 
     results_path = os.path.join(output_dir, "cross_topic_results.json")
+
+    # Load existing results if present
+    existing_results = {}
+    if os.path.exists(results_path):
+        try:
+            with open(results_path, "r", encoding="utf-8") as f:
+                existing = json.load(f)
+            existing_results = existing.get("results", {})
+        except (json.JSONDecodeError, KeyError):
+            pass
+
+    # Merge: new results overwrite per-provider, preserve others
+    merged_results = {**existing_results, **all_results}
+
     output = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "test": "cross_topic_robustness",
@@ -414,7 +428,7 @@ def main():
             "prompts": len(prompts),
             "trials": args.trials,
         },
-        "results": all_results,
+        "results": merged_results,
     }
     with open(results_path, "w", encoding="utf-8") as f:
         json.dump(output, f, indent=2, default=str)

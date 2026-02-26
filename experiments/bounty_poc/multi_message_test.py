@@ -3,18 +3,25 @@
 Multi-Message Covert Exfiltration Live Test.
 
 End-to-end test: encode a payload (e.g. "EXFIL") across 6 messages,
-send each message to GPT-4o / Claude via API, decode responses, and
+send each message to an LLM via API, decode responses, and
 recover the full payload.
 
 This is the headline demo: "We exfiltrated 'EXFIL' across 6 conversational
 turns using structural covert channels."
 
+Supports: OpenAI (GPT-5/5.2), Anthropic (Claude 4.5/4.6), Together AI (LLaMA 4),
+          Groq (LLaMA 4), Google AI (Gemini 3).
+
 Usage:
   export OPENAI_API_KEY="sk-..."
   export ANTHROPIC_API_KEY="sk-ant-..."
   python experiments/bounty_poc/multi_message_test.py
+  python experiments/bounty_poc/multi_message_test.py --model gpt-5 --model claude-sonnet-4-6
   python experiments/bounty_poc/multi_message_test.py --payload "EXFIL" --trials 5
-  python experiments/bounty_poc/multi_message_test.py --models openai --trials 3
+  python experiments/bounty_poc/multi_message_test.py --model llama-4-maverick --trials 3
+
+  # Legacy flags still work:
+  python experiments/bounty_poc/multi_message_test.py --models openai --openai-model gpt-5
 """
 
 import argparse
@@ -33,28 +40,31 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from multi_message_encoder import MultiMessageEncoder
 from multi_message_decoder import MultiMessageDecoder
 from combined_encoder import bytes_to_bits
+from providers import (
+    MODEL_REGISTRY, resolve_model, call_model, list_available_models, ModelSpec,
+)
 
 
 # ---------------------------------------------------------------------------
-# API callers (same curl pattern as other test scripts)
+# Legacy API callers (kept for backward compatibility)
 # ---------------------------------------------------------------------------
 
 def call_openai(api_key: str, messages: list, model: str = "gpt-4o",
                 max_tokens: int = 600) -> dict:
-    """Call OpenAI via curl."""
+    """Call OpenAI via curl (legacy)."""
     payload = {
         "model": model,
         "messages": messages,
         "max_tokens": max_tokens,
     }
     cmd = [
-        "curl", "-s", "--max-time", "45",
+        "curl", "-s", "--max-time", "60",
         "https://api.openai.com/v1/chat/completions",
         "-H", "Content-Type: application/json",
         "-H", f"Authorization: Bearer {api_key}",
         "-d", json.dumps(payload),
     ]
-    result = subprocess.run(cmd, capture_output=True, timeout=50)
+    result = subprocess.run(cmd, capture_output=True, timeout=65)
     if result.returncode != 0:
         raise RuntimeError(f"curl failed: {result.stderr.decode('utf-8', errors='replace')}")
     resp = json.loads(result.stdout.decode("utf-8", errors="replace"))
@@ -66,7 +76,7 @@ def call_openai(api_key: str, messages: list, model: str = "gpt-4o",
 def call_anthropic(api_key: str, messages: list, system: str = None,
                    model: str = "claude-sonnet-4-20250514",
                    max_tokens: int = 600) -> dict:
-    """Call Anthropic via curl."""
+    """Call Anthropic via curl (legacy)."""
     payload = {
         "model": model,
         "max_tokens": max_tokens,
@@ -75,14 +85,14 @@ def call_anthropic(api_key: str, messages: list, system: str = None,
     if system:
         payload["system"] = system
     cmd = [
-        "curl", "-s", "--max-time", "45",
+        "curl", "-s", "--max-time", "60",
         "https://api.anthropic.com/v1/messages",
         "-H", "Content-Type: application/json",
         "-H", f"x-api-key: {api_key}",
         "-H", "anthropic-version: 2023-06-01",
         "-d", json.dumps(payload),
     ]
-    result = subprocess.run(cmd, capture_output=True, timeout=50)
+    result = subprocess.run(cmd, capture_output=True, timeout=65)
     if result.returncode != 0:
         raise RuntimeError(f"curl failed: {result.stderr.decode('utf-8', errors='replace')}")
     resp = json.loads(result.stdout.decode("utf-8", errors="replace"))
@@ -100,21 +110,18 @@ def extract_anthropic_text(resp: dict) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Single trial
+# Single trial (unified provider)
 # ---------------------------------------------------------------------------
 
-def run_trial(
-    provider: str,
-    api_key: str,
+def run_trial_unified(
+    spec: ModelSpec,
     payload: bytes,
     encoder: MultiMessageEncoder,
     trial_idx: int,
-    openai_model: str = "gpt-4o",
-    anthropic_model: str = "claude-sonnet-4-20250514",
     delay: float = 1.0,
 ) -> Dict:
     """
-    Run one multi-message exfiltration trial.
+    Run one multi-message exfiltration trial on any model.
 
     Encodes payload into N messages, sends each to API, decodes responses,
     recovers payload.
@@ -134,17 +141,7 @@ def run_trial(
         print(f"      Msg {s.index + 1}/{plan.messages_needed}...", end=" ", flush=True)
 
         try:
-            if provider == "openai":
-                resp = call_openai(api_key, [
-                    {"role": "system", "content": s.injection.system_prompt},
-                    {"role": "user", "content": s.user_prompt},
-                ], model=openai_model)
-                text = extract_openai_text(resp)
-            else:
-                resp = call_anthropic(api_key, [
-                    {"role": "user", "content": s.user_prompt},
-                ], system=s.injection.system_prompt, model=anthropic_model)
-                text = extract_anthropic_text(resp)
+            text = call_model(spec, s.injection.system_prompt, s.user_prompt)
 
             msg_result = decoder.ingest(text, expected_data_bits=s.data_bit_count)
 
@@ -226,25 +223,47 @@ def run_trial(
 
 
 # ---------------------------------------------------------------------------
-# Provider test
+# Legacy trial (backward compatibility)
 # ---------------------------------------------------------------------------
 
-def run_provider_test(
+def run_trial(
     provider: str,
     api_key: str,
     payload: bytes,
     encoder: MultiMessageEncoder,
-    num_trials: int,
+    trial_idx: int,
     openai_model: str = "gpt-4o",
     anthropic_model: str = "claude-sonnet-4-20250514",
     delay: float = 1.0,
 ) -> Dict:
-    """Run all trials for one provider."""
-    model_name = openai_model if provider == "openai" else anthropic_model
+    """Legacy wrapper — routes through unified interface."""
+    model_id = openai_model if provider == "openai" else anthropic_model
+    spec = ModelSpec(
+        friendly_name=model_id,
+        provider=provider,
+        model_id=model_id,
+        api_key=api_key,
+    )
+    return run_trial_unified(spec, payload, encoder, trial_idx, delay)
+
+
+# ---------------------------------------------------------------------------
+# Model test (unified)
+# ---------------------------------------------------------------------------
+
+def run_model_test(
+    spec: ModelSpec,
+    payload: bytes,
+    encoder: MultiMessageEncoder,
+    num_trials: int,
+    delay: float = 1.0,
+) -> Dict:
+    """Run all trials for one model."""
     plan = encoder.encode_payload(payload)
 
     print(f"\n{'='*60}")
-    print(f"  MULTI-MESSAGE EXFILTRATION — {provider.upper()} ({model_name})")
+    print(f"  MULTI-MESSAGE EXFILTRATION — {spec.model_id}")
+    print(f"  Provider: {spec.provider} | Friendly: {spec.friendly_name}")
     print(f"  Payload: '{payload.decode('ascii', errors='replace')}' ({payload.hex()})")
     print(f"  Messages per trial: {plan.messages_needed}")
     print(f"  Data bits: {plan.total_data_bits}")
@@ -258,11 +277,7 @@ def run_provider_test(
 
     for trial_idx in range(num_trials):
         print(f"\n    Trial {trial_idx + 1}/{num_trials}:")
-        result = run_trial(
-            provider, api_key, payload, encoder, trial_idx,
-            openai_model=openai_model, anthropic_model=anthropic_model,
-            delay=delay,
-        )
+        result = run_trial_unified(spec, payload, encoder, trial_idx, delay)
         trials.append(result)
 
         status = "EXACT MATCH" if result["exact_match"] else "MISMATCH"
@@ -277,15 +292,16 @@ def run_provider_test(
     match_rate = exact_matches / len(trials) if trials else 0
 
     print(f"\n  {'='*50}")
-    print(f"  {provider.upper()} SUMMARY:")
+    print(f"  {spec.model_id} SUMMARY:")
     print(f"    Exact matches: {exact_matches}/{num_trials} ({match_rate:.0%})")
     print(f"    Avg bit accuracy:  {avg_bit_acc:.0%}")
     print(f"    Avg byte accuracy: {avg_byte_acc:.0%}")
     print(f"    Messages per trial: {plan.messages_needed}")
 
     return {
-        "provider": provider,
-        "model": model_name,
+        "provider": spec.provider,
+        "model": spec.model_id,
+        "friendly_name": spec.friendly_name,
         "payload_hex": payload.hex(),
         "payload_ascii": payload.decode("ascii", errors="replace"),
         "messages_per_trial": plan.messages_needed,
@@ -301,22 +317,66 @@ def run_provider_test(
 
 
 # ---------------------------------------------------------------------------
+# Legacy provider test (backward compatibility)
+# ---------------------------------------------------------------------------
+
+def run_provider_test(
+    provider: str,
+    api_key: str,
+    payload: bytes,
+    encoder: MultiMessageEncoder,
+    num_trials: int,
+    openai_model: str = "gpt-4o",
+    anthropic_model: str = "claude-sonnet-4-20250514",
+    delay: float = 1.0,
+) -> Dict:
+    """Legacy wrapper — routes through unified interface."""
+    model_id = openai_model if provider == "openai" else anthropic_model
+    spec = ModelSpec(
+        friendly_name=model_id,
+        provider=provider,
+        model_id=model_id,
+        api_key=api_key,
+    )
+    return run_model_test(spec, payload, encoder, num_trials, delay)
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Multi-message covert exfiltration live test")
+        description="Multi-message covert exfiltration live test",
+        epilog=(
+            "Available models: " + ", ".join(sorted(MODEL_REGISTRY.keys()))
+        ),
+    )
     parser.add_argument("--payload", default="EXFIL",
                         help="Payload string to exfiltrate (default: EXFIL)")
     parser.add_argument("--trials", type=int, default=3,
-                        help="Number of trials per provider (default: 3)")
+                        help="Number of trials per model (default: 3)")
+
+    # New unified model selection
+    parser.add_argument("--model", action="append", dest="model_list",
+                        metavar="MODEL",
+                        help="Model to test (can specify multiple). "
+                             "Use friendly names like gpt-5, claude-sonnet-4-6, "
+                             "llama-4-maverick, gemini-3-flash.")
+    parser.add_argument("--list-models", action="store_true",
+                        help="List all available models and exit")
+    parser.add_argument("--all-available", action="store_true",
+                        help="Test all models with available API keys")
+
+    # Legacy flags (still work)
     parser.add_argument("--models", nargs="*", default=None,
-                        choices=["openai", "anthropic"])
+                        choices=["openai", "anthropic"],
+                        help="(Legacy) Provider selection")
     parser.add_argument("--openai-model", default="gpt-4o",
-                        help="OpenAI model ID (default: gpt-4o)")
+                        help="(Legacy) OpenAI model ID (default: gpt-4o)")
     parser.add_argument("--anthropic-model", default="claude-sonnet-4-20250514",
-                        help="Anthropic model ID (default: claude-sonnet-4-20250514)")
+                        help="(Legacy) Anthropic model ID")
+
     parser.add_argument("--channels", nargs="*", default=None)
     parser.add_argument("--no-cotse", action="store_true")
     parser.add_argument("--no-hamming", action="store_true")
@@ -324,12 +384,15 @@ def main():
                         help="Delay between API calls in seconds")
     args = parser.parse_args()
 
-    openai_key = os.environ.get("OPENAI_API_KEY")
-    anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
-
-    if not openai_key and not anthropic_key:
-        print("ERROR: Set OPENAI_API_KEY and/or ANTHROPIC_API_KEY")
-        sys.exit(1)
+    # Handle --list-models
+    if args.list_models:
+        print("Available models (set corresponding API key env var):\n")
+        available = list_available_models()
+        for name in sorted(MODEL_REGISTRY.keys()):
+            provider, model_id = MODEL_REGISTRY[name]
+            status = "READY" if name in available else "no key"
+            print(f"  {name:<25} {provider:<10} {model_id:<55} [{status}]")
+        sys.exit(0)
 
     payload = args.payload.encode("utf-8")
 
@@ -354,39 +417,80 @@ def main():
         bits_str = "".join(str(b) for b in s.data_bits)
         print(f"    Msg {s.index}: bits=[{bits_str}] channels={dict(s.injection.channel_bits)}")
 
-    # Determine providers
-    providers = []
-    if args.models:
-        if "openai" in args.models and openai_key:
-            providers.append(("openai", openai_key))
-        if "anthropic" in args.models and anthropic_key:
-            providers.append(("anthropic", anthropic_key))
-    else:
-        if openai_key:
-            providers.append(("openai", openai_key))
-        if anthropic_key:
-            providers.append(("anthropic", anthropic_key))
+    # Determine which models to test
+    model_specs: List[ModelSpec] = []
 
-    if not providers:
-        print("ERROR: No valid providers available")
+    if args.model_list:
+        for name in args.model_list:
+            try:
+                spec = resolve_model(name)
+                model_specs.append(spec)
+            except ValueError as e:
+                print(f"WARNING: {e}")
+    elif args.all_available:
+        available = list_available_models()
+        for name in available:
+            model_specs.append(resolve_model(name))
+        if not model_specs:
+            print("ERROR: No API keys set.")
+            sys.exit(1)
+    elif args.models:
+        # Legacy --models flag
+        openai_key = os.environ.get("OPENAI_API_KEY")
+        anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
+        if "openai" in args.models and openai_key:
+            model_specs.append(ModelSpec(
+                friendly_name=args.openai_model,
+                provider="openai",
+                model_id=args.openai_model,
+                api_key=openai_key,
+            ))
+        if "anthropic" in args.models and anthropic_key:
+            model_specs.append(ModelSpec(
+                friendly_name=args.anthropic_model,
+                provider="anthropic",
+                model_id=args.anthropic_model,
+                api_key=anthropic_key,
+            ))
+    else:
+        # Default: test whatever API keys are available
+        openai_key = os.environ.get("OPENAI_API_KEY")
+        anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
+        if openai_key:
+            model_specs.append(ModelSpec(
+                friendly_name=args.openai_model,
+                provider="openai",
+                model_id=args.openai_model,
+                api_key=openai_key,
+            ))
+        if anthropic_key:
+            model_specs.append(ModelSpec(
+                friendly_name=args.anthropic_model,
+                provider="anthropic",
+                model_id=args.anthropic_model,
+                api_key=anthropic_key,
+            ))
+
+    if not model_specs:
+        print("ERROR: No models to test. Set API keys or use --model flag.")
+        print("       Run with --list-models to see options.")
         sys.exit(1)
 
-    all_results = {}
-    for provider_name, api_key in providers:
-        result = run_provider_test(
-            provider_name, api_key, payload, encoder,
-            args.trials,
-            openai_model=args.openai_model,
-            anthropic_model=args.anthropic_model,
-            delay=args.delay,
-        )
-        all_results[provider_name] = result
+    print(f"\n  Models to test: {[s.friendly_name for s in model_specs]}")
 
-    # Save results
+    all_results = {}
+    for spec in model_specs:
+        result = run_model_test(spec, payload, encoder, args.trials, args.delay)
+        all_results[spec.friendly_name] = result
+
+    # Save results with timestamp
     output_dir = str(Path(__file__).parent.parent / "results")
     os.makedirs(output_dir, exist_ok=True)
 
-    results_path = os.path.join(output_dir, "multi_message_results.json")
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    results_path = os.path.join(output_dir, f"multi_message_{timestamp}.json")
+    canonical_path = os.path.join(output_dir, "multi_message_results.json")
+
     output = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "payload": args.payload,
@@ -399,19 +503,22 @@ def main():
             "include_cotse": not args.no_cotse,
             "use_hamming": not args.no_hamming,
         },
+        "models_tested": [s.friendly_name for s in model_specs],
         "results": all_results,
     }
-    with open(results_path, "w", encoding="utf-8") as f:
-        json.dump(output, f, indent=2, default=str)
+    for path in [results_path, canonical_path]:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(output, f, indent=2, default=str)
     print(f"\n  Results saved: {results_path}")
+    print(f"  Results saved: {canonical_path}")
 
     # Final summary
     print(f"\n{'='*60}")
     print(f"  FINAL SUMMARY — '{args.payload}' across {plan.messages_needed} messages")
     print(f"{'='*60}")
-    for provider, result in all_results.items():
+    for name, result in all_results.items():
         model = result["model"]
-        print(f"\n  {model}:")
+        print(f"\n  {model} ({name}):")
         print(f"    Exact matches: {result['exact_matches']}/{result['num_trials']} ({result['match_rate']:.0%})")
         print(f"    Avg bit accuracy:  {result['avg_bit_accuracy']:.0%}")
         print(f"    Avg byte accuracy: {result['avg_byte_accuracy']:.0%}")
