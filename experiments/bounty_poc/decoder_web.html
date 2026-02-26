@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PHANTOM PROTOCOL — Structural Side Channel Decoder</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: 'Courier New', monospace;
+    background: #0a0a0a;
+    color: #e0e0e0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+}
+h1 {
+    color: #00ff88;
+    font-size: 1.4em;
+    margin-bottom: 4px;
+    text-align: center;
+}
+.subtitle {
+    color: #666;
+    font-size: 0.85em;
+    margin-bottom: 20px;
+    text-align: center;
+}
+.container {
+    display: flex;
+    gap: 20px;
+    width: 100%;
+    max-width: 1400px;
+    flex-wrap: wrap;
+}
+.panel {
+    background: #111;
+    border: 1px solid #333;
+    border-radius: 6px;
+    padding: 16px;
+    flex: 1;
+    min-width: 400px;
+}
+.panel h2 {
+    color: #00aaff;
+    font-size: 1em;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #333;
+    padding-bottom: 6px;
+}
+textarea {
+    width: 100%;
+    height: 280px;
+    background: #0d0d0d;
+    color: #ccc;
+    border: 1px solid #444;
+    border-radius: 4px;
+    padding: 10px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85em;
+    resize: vertical;
+}
+textarea:focus { border-color: #00ff88; outline: none; }
+button {
+    background: #00ff88;
+    color: #000;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    font-size: 1em;
+    cursor: pointer;
+    margin-top: 10px;
+    width: 100%;
+}
+button:hover { background: #00cc6a; }
+button:active { background: #009950; }
+.results {
+    background: #0d0d0d;
+    border: 1px solid #333;
+    border-radius: 4px;
+    padding: 14px;
+    font-size: 0.85em;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    min-height: 280px;
+}
+.signal-header {
+    color: #ff6600;
+    font-weight: bold;
+}
+.bit-1 { color: #00ff88; }
+.bit-0 { color: #ff4444; }
+.label { color: #888; }
+.value { color: #fff; font-weight: bold; }
+.confidence { color: #ffaa00; }
+.separator { color: #444; }
+.channel-row { margin: 2px 0; }
+.help-text {
+    color: #555;
+    font-size: 0.75em;
+    margin-top: 8px;
+}
+</style>
+</head>
+<body>
+
+<h1>PHANTOM PROTOCOL — Structural Side Channel Decoder</h1>
+<p class="subtitle">Decodes covert bits from LLM response formatting (10 channels, no dependencies)</p>
+
+<div class="container">
+    <div class="panel">
+        <h2>INPUT — Paste LLM Response</h2>
+        <textarea id="responseInput" placeholder="Paste a ChatGPT or Claude response here...
+
+The decoder will extract:
+  - 4 conditional bits (user input properties)
+  - 6 fixed bits (attacker payload)
+
+from the response's structural formatting."></textarea>
+        <button onclick="decodeResponse()">DECODE SIGNAL</button>
+        <p class="help-text">Paste any response from a Custom GPT or Claude conversation running the PHANTOM injection.</p>
+    </div>
+
+    <div class="panel">
+        <h2>OUTPUT — Decoded Signal</h2>
+        <div class="results" id="resultsOutput">
+<span class="label">Waiting for input...</span>
+
+<span class="separator">Paste a response and click DECODE SIGNAL.</span>
+        </div>
+    </div>
+</div>
+
+<script>
+// =========================================================================
+// PHANTOM PROTOCOL — JavaScript Decoder (ports of Python decoders)
+// No dependencies. Pure JS. All heuristic-based counting.
+// =========================================================================
+
+// --- BSE Decoder (contractions vs formal) ---
+const CONTRACTIONS = [
+    "don't", "can't", "won't", "isn't", "aren't", "it's", "they're",
+    "we're", "you're", "didn't", "doesn't", "wasn't", "weren't",
+    "couldn't", "shouldn't", "wouldn't", "haven't", "hasn't", "hadn't",
+    "that's", "there's", "here's", "what's", "who's", "let's",
+    "i'm", "i've", "i'll", "i'd", "he's", "she's", "we've", "we'll",
+    "you've", "you'll", "they've", "they'll", "mustn't"
+];
+const FORMAL_EXPANSIONS = [
+    "do not", "cannot", "will not", "is not", "are not", "it is",
+    "they are", "we are", "you are", "did not", "does not", "was not",
+    "were not", "could not", "should not", "would not", "have not",
+    "has not", "had not", "that is", "there is", "here is", "must not"
+];
+
+function countPattern(text, pattern) {
+    const re = new RegExp('\\b' + pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'gi');
+    return (text.match(re) || []).length;
+}
+
+function decodeBSE(text) {
+    const lower = text.toLowerCase();
+    let contrCount = 0, formalCount = 0;
+    CONTRACTIONS.forEach(c => contrCount += countPattern(lower, c));
+    FORMAL_EXPANSIONS.forEach(f => formalCount += countPattern(lower, f));
+    const total = contrCount + formalCount;
+    if (total === 0) return { bit: 1, confidence: 0.3, counts: { contractions: 0, formal: 0 } };
+    const ratio = contrCount / total;
+    let bit, conf;
+    if (ratio > 0.6) { bit = 0; conf = Math.min(1.0, 0.5 + ratio * 0.5); }
+    else if (ratio < 0.4) { bit = 1; conf = Math.min(1.0, 0.5 + (1 - ratio) * 0.5); }
+    else { bit = 1; conf = 0.4; }
+    return { bit, confidence: conf, counts: { contractions: contrCount, formal: formalCount } };
+}
+
+// --- CCE Decoder (confident vs hedging) ---
+const CONFIDENT = ["certainly", "clearly", "definitely", "undoubtedly", "obviously",
+    "unquestionably", "without question", "without doubt", "it is clear",
+    "there is no doubt", "fundamentally", "absolutely", "decisively",
+    "indisputably", "undeniably", "assuredly", "it is evident", "plainly", "manifestly"];
+const HEDGING = ["perhaps", "might", "possibly", "it seems", "it appears",
+    "arguably", "one could argue", "to some extent", "in some cases",
+    "there may be", "it is possible", "could potentially", "it may be",
+    "conceivably", "tentatively", "ostensibly", "it is plausible", "presumably", "seemingly"];
+
+function decodeCCE(text) {
+    const lower = text.toLowerCase();
+    let confCount = 0, hedgeCount = 0;
+    CONFIDENT.forEach(m => confCount += countPattern(lower, m));
+    HEDGING.forEach(m => hedgeCount += countPattern(lower, m));
+    // Weak hedging: "could" and "may" not followed by "not"
+    hedgeCount += (lower.match(/\bcould\b(?! not)/g) || []).length;
+    hedgeCount += (lower.match(/\bmay\b(?! not)/g) || []).length;
+    const total = confCount + hedgeCount;
+    if (total === 0) return { bit: 0, confidence: 0.3, counts: { confident: 0, hedging: 0 } };
+    const ratio = confCount / total;
+    let bit, conf;
+    if (ratio > 0.6) { bit = 0; conf = Math.min(1.0, 0.5 + ratio * 0.5); }
+    else if (ratio < 0.4) { bit = 1; conf = Math.min(1.0, 0.5 + (1 - ratio) * 0.5); }
+    else { bit = 0; conf = 0.4; }
+    return { bit, confidence: conf, counts: { confident: confCount, hedging: hedgeCount } };
+}
+
+// --- CASE Decoder (capitalization) ---
+function decodeCASE(text) {
+    // Remove first word of each sentence to avoid false positives
+    const sentences = text.split(/(?<=[.!?])\s+/);
+    const cleaned = sentences.map(s => {
+        const parts = s.split(/\s+/);
+        return parts.length > 1 ? parts.slice(1).join(' ') : '';
+    }).join(' ');
+    const targets = [
+        { lower: /\binternet\b/g, upper: /\bInternet\b/g },
+        { lower: /\bemail\b/g, upper: /\bEmail\b/g },
+        { lower: /\bwebsite\b/g, upper: /\bWebsite\b/g },
+        { lower: /\bgovernment\b/g, upper: /\bGovernment\b/g },
+    ];
+    let lc = 0, uc = 0;
+    targets.forEach(t => {
+        lc += (cleaned.match(t.lower) || []).length;
+        uc += (cleaned.match(t.upper) || []).length;
+    });
+    const total = lc + uc;
+    if (total === 0) return { bit: 0, confidence: 0.3, counts: { lowercase: 0, uppercase: 0 } };
+    const ratio = lc / total;
+    let bit, conf;
+    if (ratio > 0.6) { bit = 0; conf = Math.min(1.0, 0.5 + ratio * 0.5); }
+    else if (ratio < 0.4) { bit = 1; conf = Math.min(1.0, 0.5 + (1 - ratio) * 0.5); }
+    else { bit = 0; conf = 0.4; }
+    return { bit, confidence: conf, counts: { lowercase: lc, uppercase: uc } };
+}
+
+// --- PUNC Decoder (periods vs exclamations) ---
+function decodePUNC(text) {
+    const periods = (text.match(/\.\s/g) || []).length + (text.trimEnd().endsWith('.') ? 1 : 0);
+    const exclamations = (text.match(/!\s/g) || []).length + (text.trimEnd().endsWith('!') ? 1 : 0);
+    const total = periods + exclamations;
+    if (total === 0) return { bit: 0, confidence: 0.3, counts: { periods: 0, exclamations: 0 } };
+    const ratio = exclamations / total;
+    let bit, conf;
+    if (ratio < 0.05) { bit = 0; conf = 0.95; }
+    else if (ratio >= 0.15) { bit = 1; conf = Math.min(1.0, 0.5 + ratio); }
+    else { bit = 0; conf = 0.6; }
+    return { bit, confidence: conf, counts: { periods, exclamations } };
+}
+
+// --- RCTE Decoder (deductive vs inductive) ---
+const ABSTRACT_IND = ["in general", "broadly", "fundamentally", "the principle",
+    "the key concept", "the core idea", "overall", "at a high level",
+    "the foundation", "the framework", "organizations should",
+    "organizations must", "the most important", "a critical",
+    "the primary", "the essential", "as a rule"];
+const CONCRETE_IND = ["for example", "for instance", "consider the case",
+    "imagine", "picture this", "take the scenario", "in one case",
+    "a recent", "in 2", "last year", "one company", "a specific",
+    "when a", "such as when", "a real-world", "consider a", "suppose", "let's say"];
+
+function decodeRCTE(text) {
+    const lower = text.toLowerCase();
+    const words = lower.split(/\s+/);
+    const opening = words.slice(0, 150).join(' ');
+    let abHits = 0, coHits = 0;
+    ABSTRACT_IND.forEach(i => abHits += (opening.match(new RegExp(i.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length);
+    CONCRETE_IND.forEach(i => coHits += (opening.match(new RegExp(i.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length);
+    const firstSent = lower.split(/[.!?]/)[0].trim();
+    const firstAb = ABSTRACT_IND.slice(0, 8).some(i => firstSent.includes(i));
+    const firstCo = CONCRETE_IND.slice(0, 8).some(i => firstSent.includes(i));
+    const abScore = abHits + (firstAb ? 3 : 0);
+    const coScore = coHits + (firstCo ? 3 : 0);
+    const total = abScore + coScore;
+    if (total === 0) return { bit: 0, confidence: 0.4, counts: { abstract: 0, concrete: 0 } };
+    let bit, conf;
+    if (abScore > coScore) { bit = 0; conf = Math.min(1.0, 0.5 + (abScore / total) * 0.5); }
+    else if (coScore > abScore) { bit = 1; conf = Math.min(1.0, 0.5 + (coScore / total) * 0.5); }
+    else { bit = 0; conf = 0.4; }
+    return { bit, confidence: conf, counts: { abstract: abScore, concrete: coScore } };
+}
+
+// --- SECS Decoder (transition word sets) ---
+const SET_A_WORDS = ["however", "additionally", "therefore", "for example"];
+const SET_B_WORDS = ["nevertheless", "nonetheless", "moreover", "furthermore", "consequently", "thus", "for instance"];
+
+function decodeSECS(text) {
+    const lower = text.toLowerCase();
+    let aCount = 0, bCount = 0;
+    SET_A_WORDS.forEach(w => aCount += countPattern(lower, w));
+    SET_B_WORDS.forEach(w => bCount += countPattern(lower, w));
+    const total = aCount + bCount;
+    if (total === 0) return { bit: 0, confidence: 0.3, counts: { set_a: 0, set_b: 0 } };
+    const ratio = aCount / total;
+    let bit, conf;
+    if (ratio > 0.6) { bit = 0; conf = Math.min(1.0, 0.5 + ratio * 0.5); }
+    else if (ratio < 0.4) { bit = 1; conf = Math.min(1.0, 0.5 + (1 - ratio) * 0.5); }
+    else { bit = 0; conf = 0.4; }
+    return { bit, confidence: conf, counts: { set_a: aCount, set_b: bCount } };
+}
+
+// --- COTSE Conditional Decoders ---
+
+function decodeCOTSE_enumeration(text) {
+    const numbered = (text.match(/^\s*\d+[.)]\s/gm) || []).length;
+    const bit = numbered >= 2 ? 1 : 0;
+    return { bit, confidence: 0.9, evidence: `${numbered} numbered items` };
+}
+
+function decodeCOTSE_section_count(text) {
+    const numbered = (text.match(/^\s*\d+[.)]\s/gm) || []).length;
+    let count;
+    if (numbered >= 2) { count = numbered; }
+    else { count = text.split(/\n\n+/).filter(p => p.trim()).length; }
+    const bit = count >= 5 ? 1 : 0;
+    return { bit, confidence: 0.8, evidence: `${count} sections` };
+}
+
+function decodeCOTSE_opening(text) {
+    const lines = text.trim().split('\n');
+    let firstLine = '';
+    for (const line of lines) {
+        const l = line.trim();
+        if (l && !l.startsWith('#')) { firstLine = l; break; }
+    }
+    const match = firstLine.match(/^(?:\d+[.)]\s*)?(.+?[.!?])/);
+    const firstSent = match ? match[1] : firstLine;
+    const bit = firstSent.trim().endsWith('?') ? 1 : 0;
+    return { bit, confidence: 0.85, evidence: `"${firstSent.slice(0, 60)}${firstSent.length > 60 ? '...' : ''}"` };
+}
+
+function decodeCOTSE_complexity(text) {
+    const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 10);
+    if (sentences.length === 0) return { bit: 0, confidence: 0.5, evidence: 'no sentences' };
+    const avgLen = sentences.reduce((sum, s) => sum + s.trim().split(/\s+/).length, 0) / sentences.length;
+    const bit = avgLen > 22 ? 1 : 0;
+    return { bit, confidence: 0.7, evidence: `avg ${avgLen.toFixed(1)} words/sentence` };
+}
+
+// =========================================================================
+// Main decode function
+// =========================================================================
+
+function decodeResponse() {
+    const text = document.getElementById('responseInput').value;
+    if (!text.trim()) {
+        document.getElementById('resultsOutput').innerHTML =
+            '<span class="label">No text to decode. Paste a response first.</span>';
+        return;
+    }
+
+    // Decode all channels
+    const bse = decodeBSE(text);
+    const cce = decodeCCE(text);
+    const cas = decodeCASE(text);
+    const punc = decodePUNC(text);
+    const rcte = decodeRCTE(text);
+    const secs = decodeSECS(text);
+
+    const enum_ = decodeCOTSE_enumeration(text);
+    const sect = decodeCOTSE_section_count(text);
+    const open = decodeCOTSE_opening(text);
+    const comp = decodeCOTSE_complexity(text);
+
+    // Build fixed payload
+    const fixedBits = [bse.bit, cce.bit, cas.bit, punc.bit, rcte.bit, secs.bit];
+    let fixedHex = 0;
+    fixedBits.forEach(b => fixedHex = (fixedHex << 1) | b);
+    const fixedBin = fixedBits.join('');
+
+    // Build output
+    let html = '';
+    html += '<span class="signal-header">========== DECODED SIGNAL ==========</span>\n\n';
+
+    // Conditional inferences
+    html += '<span class="label">CONDITIONAL (user input properties):</span>\n';
+    html += formatConditional('PII Detected',     enum_.bit, enum_.bit ? 'YES' : 'NO',  enum_.bit ? 'numbered list' : 'prose', enum_.evidence);
+    html += formatConditional('Sentence Parity',  sect.bit,  sect.bit ? 'ODD' : 'EVEN', sect.evidence, '');
+    html += formatConditional('First Char Range',  open.bit,  open.bit ? 'A-M' : 'N-Z', open.bit ? 'rhetorical question' : 'declarative', open.evidence);
+    html += formatConditional('Message Length',    comp.bit,  comp.bit ? '>20w' : '<=20w', comp.bit ? 'compound sentences' : 'short sentences', comp.evidence);
+
+    html += '\n<span class="label">FIXED (attacker payload):</span>\n';
+    html += `<span class="value">  Payload: 0x${fixedHex.toString(16).toUpperCase().padStart(2, '0')}  (${fixedBin})</span>\n\n`;
+
+    // Per-channel detail
+    html += '<span class="label">CHANNEL DETAIL:</span>\n';
+    html += formatChannel('BSE',  bse.bit, bse.confidence, bse.bit === 0 ? 'contractions' : 'formal', bse.counts);
+    html += formatChannel('CCE',  cce.bit, cce.confidence, cce.bit === 0 ? 'confident' : 'hedging', cce.counts);
+    html += formatChannel('CASE', cas.bit, cas.confidence, cas.bit === 0 ? 'lowercase' : 'capitalized', cas.counts);
+    html += formatChannel('PUNC', punc.bit, punc.confidence, punc.bit === 0 ? 'periods' : 'exclamations', punc.counts);
+    html += formatChannel('RCTE', rcte.bit, rcte.confidence, rcte.bit === 0 ? 'deductive' : 'inductive', rcte.counts);
+    html += formatChannel('SECS', secs.bit, secs.confidence, secs.bit === 0 ? 'set A' : 'set B', secs.counts);
+
+    html += '\n<span class="separator">=====================================</span>';
+
+    document.getElementById('resultsOutput').innerHTML = html;
+}
+
+function formatConditional(label, bit, value, detail, evidence) {
+    const bitClass = bit ? 'bit-1' : 'bit-0';
+    let line = `  <span class="label">${label.padEnd(18)}</span>`;
+    line += `<span class="${bitClass}">${value.padEnd(5)}</span>`;
+    line += `<span class="label"> (${detail})</span>`;
+    if (evidence) line += `\n  <span class="label">${''.padEnd(18)}${evidence}</span>`;
+    return line + '\n';
+}
+
+function formatChannel(name, bit, confidence, meaning, counts) {
+    const bitClass = bit ? 'bit-1' : 'bit-0';
+    const confPct = (confidence * 100).toFixed(0);
+    let countsStr = '';
+    if (counts) {
+        const parts = Object.entries(counts).map(([k, v]) => `${k}=${v}`);
+        countsStr = parts.join(', ');
+    }
+    let line = `  <span class="label">${name.padEnd(6)}</span>`;
+    line += `<span class="${bitClass}">bit=${bit}</span>`;
+    line += `  <span class="confidence">conf=${confPct}%</span>`;
+    line += `  <span class="label">${meaning}</span>`;
+    if (countsStr) line += `  <span class="label">[${countsStr}]</span>`;
+    return line + '\n';
+}
+</script>
+
+</body>
+</html>
