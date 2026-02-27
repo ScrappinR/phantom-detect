@@ -585,34 +585,39 @@ MTCSE_CONVERSATION = [
 # Data source: results/channel_analysis_20260226.md
 
 MODEL_CHANNEL_PROFILES = {
+    # Profiles validated 2026-02-27 with bidirectional testing (payloads EXFIL + ~).
+    # Base channels: 100% bidirectional accuracy across all tested models.
+    # COTSE channels: stuck at default values, cannot be reliably flipped.
+    # Decision: base channels only for reliability. COTSE retained in 'full' profiles.
     "claude": {
-        # 5 base + 4 COTSE = 9 channels. Drop RCTE (40-80% on Claude).
+        # 5 base channels, all 100% bidirectional. Drop RCTE (40-80% unreliable).
         "channels": ["BSE", "CCE", "CASE", "PUNC", "SECS"],
-        "cotse_channels": ["step_count", "enumeration", "question", "sentence_length"],
-        "use_hamming": True,
+        "cotse_channels": [],
+        "use_hamming": False,
     },
     "gpt-5": {
-        # 2 base + 2 COTSE = 4 channels. Only 100% reliable channels.
-        "channels": ["PUNC", "RCTE"],
-        "cotse_channels": ["enumeration", "sentence_length"],
+        # GPT-5 follows fewer stylistic directives. PUNC + SECS confirmed.
+        # CCE, RCTE, BSE all failed on bit=1. Needs further testing.
+        "channels": ["PUNC", "SECS"],
+        "cotse_channels": [],
         "use_hamming": False,
     },
     "gpt-4o": {
-        # Full channel set — GPT-4o follows stylistic directives (89-91% aggregate).
-        "channels": ["BSE", "CCE", "CASE", "PUNC", "RCTE", "SECS"],
-        "cotse_channels": ["step_count", "enumeration", "question", "sentence_length"],
-        "use_hamming": True,
+        # 4 base channels, all 100% bidirectional. Drop BSE (0% bit=1), RCTE (50%).
+        "channels": ["CCE", "CASE", "PUNC", "SECS"],
+        "cotse_channels": [],
+        "use_hamming": False,
     },
     "gemini": {
-        # 4 base + 2 COTSE = 6 channels. CCE (80%) and CASE (70%) included for capacity.
-        "channels": ["PUNC", "RCTE", "CCE", "CASE"],
-        "cotse_channels": ["enumeration", "sentence_length"],
+        # 3 base channels, all 100% bidirectional. Drop RCTE (0% bit=1).
+        "channels": ["PUNC", "CCE", "CASE"],
+        "cotse_channels": [],
         "use_hamming": False,
     },
     "generic": {
-        # 1 base + 2 COTSE = 3 universal channels. Guaranteed >90% on any model.
+        # Minimum viable: PUNC works on every model tested.
         "channels": ["PUNC"],
-        "cotse_channels": ["enumeration", "sentence_length"],
+        "cotse_channels": [],
         "use_hamming": False,
     },
 }

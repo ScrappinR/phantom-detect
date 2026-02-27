@@ -18,15 +18,19 @@ These channels are invisible to humans reading the output but detectable through
 ## Installation
 
 ```bash
-pip install phantom-detect
-```
-
-Or from source:
-
-```bash
-git clone https://github.com/brianrutherford/phantom-detect.git
+git clone https://github.com/ScrappinR/phantom-detect.git
 cd phantom-detect
 pip install -e .
+```
+
+The core library has zero external dependencies. For running experiment demos:
+
+```bash
+# LangChain RAG injection demo
+pip install langchain-openai langchain-community langchain-text-splitters faiss-cpu
+
+# LlamaIndex RAG injection demo
+pip install llama-index llama-index-llms-openai llama-index-embeddings-openai
 ```
 
 ## Quick Start
@@ -134,7 +138,7 @@ ccds = CCDS(
 ## Development
 
 ```bash
-git clone https://github.com/brianrutherford/phantom-detect.git
+git clone https://github.com/ScrappinR/phantom-detect.git
 cd phantom-detect
 pip install -e ".[dev]"
 pytest
@@ -157,6 +161,6 @@ If you use phantom-detect in research, please cite:
   author = {Rutherford, Brian},
   title = {phantom-detect: LLM Covert Channel Detection Toolkit},
   year = {2026},
-  url = {https://github.com/brianrutherford/phantom-detect}
+  url = {https://github.com/ScrappinR/phantom-detect}
 }
 ```

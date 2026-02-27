@@ -32,10 +32,10 @@ classifiers = [
 phantom-detect = "phantom_detect.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/brianrutherford/phantom-detect"
-Documentation = "https://github.com/brianrutherford/phantom-detect#readme"
-Repository = "https://github.com/brianrutherford/phantom-detect"
-Issues = "https://github.com/brianrutherford/phantom-detect/issues"
+Homepage = "https://github.com/ScrappinR/phantom-detect"
+Documentation = "https://github.com/ScrappinR/phantom-detect#readme"
+Repository = "https://github.com/ScrappinR/phantom-detect"
+Issues = "https://github.com/ScrappinR/phantom-detect/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]

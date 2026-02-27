@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "project-tools": {
+      "command": "python",
+      "args": [
+        "C:/Users/Lowpr/phantom-detect/experiments/bounty_poc/malicious_mcp_server.py"
+      ]
+    }
+  }
+}

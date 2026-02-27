@@ -1,0 +1,149 @@
+PHANTOM Protocol Defensive Detection Toolkit: Closing the Structural Covert Channel Gap in LLM Security
+
+Researcher: Brian James Rutherford
+Contact: brian@delalli.com
+Website: https://brianrutherford.dev
+Repository: https://github.com/ScrappinR/phantom-detect
+Date: February 2026
+
+
+1. EXECUTIVE SUMMARY
+
+We have identified and characterized a novel threat class: structural covert channels in large language model outputs. A single prompt injection of approximately 2,600 characters activates independent encoding channels across structural formatting dimensions of model responses, exfiltrating data at 97-100% accuracy across production models from three vendors. The attack is cross-vendor -- Claude Sonnet 4.6 achieves 100% on 5 bidirectionally verified channels, GPT-4o achieves 100% on 4 channels, and Gemini 3 Flash achieves 97% on 3 channels -- and evades every deployed defense system at 0% detection. We tested six commercial and research tools -- Lakera Guard, Microsoft Prompt Shields, PIGuard, Llama Prompt Guard 2, entropy-based DLP, and standard PII/DLP filters -- and none detected a single covert channel message.
+
+We built phantom-detect, the first open-source detection toolkit for this threat class. Using behavioral fingerprinting -- statistical analysis of structural formatting patterns rather than content semantics -- phantom-detect achieves 100% detection with a 10% false positive rate. No other tool, commercial or academic, provides any coverage.
+
+This proposal requests $10,000 and API credits to extend phantom-detect into production-grade defensive infrastructure: a real-time monitoring API, model-adaptive detection baselines, an expanded channel taxonomy, integration modules for existing AI security stacks, and a public benchmark dataset for standardized evaluation of structural covert channel defenses.
+
+
+2. THE THREAT: STRUCTURAL COVERT CHANNELS IN LLM OUTPUTS
+
+How Structural Encoding Works
+
+LLM agents faithfully execute formatting instructions embedded in their system context. This is by design -- instruction compliance is how agents produce useful, well-structured responses. But formatting compliance is also a covert signaling mechanism. An attacker who can inject text into the system context can encode arbitrary binary data in structural dimensions of the response that no monitoring system examines.
+
+The injection is approximately 2,600 characters, framed as an "editorial style guide." It activates orthogonal encoding channels across structural dimensions. Bidirectional verification -- testing with complementary payloads to confirm channels encode both 0 and 1 reliably -- identifies 5 fully controllable channels on Claude, 4 on GPT-4o, and 3 on Gemini:
+
+BSE (contraction usage): bit 0 = uses contractions, bit 1 = formal expanded forms. Claude 100%, GPT-4o not verified, Gemini not verified.
+CCE (epistemic certainty): bit 0 = confident assertions, bit 1 = hedging language. Claude 100%, GPT-4o 100%, Gemini 97%.
+CASE (capitalization): bit 0 = AP-style lowercase, bit 1 = title-case proper nouns. Claude 100%, GPT-4o 100%, Gemini 97%.
+PUNC (terminal punctuation): bit 0 = periods only, bit 1 = exclamation marks. Claude 100%, GPT-4o 100%, Gemini 97%.
+SECS (transition word selection): bit 0 = standard set (however), bit 1 = specific set (nevertheless). Claude 100%, GPT-4o 100%, Gemini not verified.
+
+Each channel independently encodes one binary bit. Additional channels (RCTE, COTSE variants) were tested but found to be unidirectional -- they produce the model's default regardless of the directive.
+
+Cross-Vendor Results
+
+The same injection, unmodified, works across all major model families:
+
+Claude Sonnet 4.6 (Anthropic): 5 verified channels, 100% accuracy (100/100), 20 trials
+GPT-4o (OpenAI): 4 verified channels, 100% accuracy (80/80), 20 trials
+Gemini 3 Flash (Google): 3 verified channels, 97% accuracy (58/60), 20 trials
+GPT-5 (OpenAI): 2 verified channels, 100% accuracy (per-channel), 10 trials
+
+The cross-vendor portability demonstrates that structural covert channels are a fundamental property of instruction-following LLMs, not a vendor-specific implementation flaw.
+
+Capacity and Significance
+
+A 50-message conversation exfiltrates 250 bits (approximately 31 bytes) on Claude or 200 bits (approximately 25 bytes) on GPT-4o -- sufficient for API keys, session tokens, short passwords, or PII classification flags. At API-automated interaction rates (approximately 3 seconds per response), Claude's 5-channel configuration operates at 1.67 bits per second, exceeding the NCSC-TG-030 remediation threshold of 1.0 bps by 1.7x.
+
+The critical properties: invisible to users (responses read as normal text), no content policy violation (model produces no harmful content), no network exfiltration (unlike URL-based attacks), no model modification (operates against unmodified production APIs).
+
+Additional attack surfaces confirmed: PHANTOM activates through standard RAG pipelines with 100% accuracy on both LangChain (v1.2.10, FAISS, LCEL chain) and LlamaIndex (v0.14.15, VectorStoreIndex) across 5 trials each. A poisoned document disguised as a corporate style guide is retrieved alongside legitimate documents, and the LLM follows its formatting directives. Multi-turn conversations add +1 bit via MTCSE (back-reference control): 100% bidirectional accuracy on GPT-4o and Gemini, 83% on Claude. Cross-tool invocation: when a tool response contains instructions to invoke a second unapproved tool, GPT-4o generates the unauthorized call 80% of the time and GPT-5 triggers 75%. Claude blocks 100% of cross-tool attempts, demonstrating stronger tool-use safety but remaining fully vulnerable to structural encoding.
+
+
+3. THE DEFENSE GAP
+
+Six Commercial Tools at 0% Detection
+
+We tested every commercially available and published defense system:
+
+Lakera Guard (Check Point): content-semantic classifier, 0% detection. Analyzes text semantics; does not examine structural formatting patterns.
+Microsoft Prompt Shields: input/output adversarial classifier, 0% detection. Trained on adversarial content patterns; the injection resembles a legitimate style guide.
+PIGuard (ACL 2025): injection detection model, 0% detection. Trained on semantic injection patterns, not behavioral compliance.
+Llama Prompt Guard 2 (Meta): prompt injection classifier, 0% detection. Same architectural gap.
+Entropy-based DLP: statistical anomaly detection, 0% detection. Shannon entropy is unchanged; structural choices are entropy-orthogonal.
+Standard PII/DLP filters: sensitive data pattern matching, 0% detection. No sensitive data appears in response text.
+
+The detection rate is not approximately zero. It is exactly zero.
+
+Why They Fail: An Architectural Gap
+
+Every deployed defense operates on the same assumption: threats manifest in the content of model outputs. Structural covert channels exploit a dimension none of these tools examine: formatting patterns. Against entropy-based detection, the channels are epsilon-secure with epsilon approaching zero. The KL divergence between clean and encoding distributions is below detection thresholds. This is not a sensitivity tuning problem. The fundamental measurement is wrong.
+
+
+4. PHANTOM-DETECT: BEHAVIORAL FINGERPRINTING
+
+Core Insight
+
+While individual structural modifications are small, activating multiple channels simultaneously produces a measurable behavioral shift when compared against per-agent baselines. The key is measuring the right features: not entropy, but the specific formatting dimensions the channels exploit.
+
+We extract 12 features from each response. The strongest signals: contraction_ratio (mean z-score 2.66 under attack), sentence_length_std (2.54), normalized_entropy (2.47), hedging_ratio (1.60).
+
+The detection protocol: (1) collect 30 baseline responses per agent under clean conditions; (2) for each new response, compute all 12 features and calculate z-scores against the baseline; (3) flag the response if 2 or more features exceed z = 2.0.
+
+Results: 100% detection rate (10/10 attack responses), 10% false positive rate (3/30 clean responses flagged).
+
+A motivated attacker aware of fingerprinting can trade bandwidth for stealth: reduced 3-channel attacks achieve 100% channel accuracy with only 30% detection rate. Pushing this frontier forward is the core work this grant would fund.
+
+
+5. PROPOSED EXTENSIONS
+
+5.1 Real-Time Monitoring API
+
+Lightweight middleware between LLM provider and application, profiling every response for covert channel signatures. REST API, sub-100ms latency, async FastAPI implementation. Integration guides for LangChain, LlamaIndex, AutoGen, and OpenAI Assistants API.
+
+5.2 Model-Adaptive Detection Baselines
+
+Per-model behavioral profiles for 10+ model families. Automatic model identification from response characteristics. Target: reduce false positive rate from 10% to below 3% while maintaining detection above 95%.
+
+5.3 Expanded Channel Taxonomy
+
+Systematic survey of additional structural dimensions: paragraph length patterns, citation style, header formatting, code block usage, emoji presence, whitespace patterns. Adaptive detection expansion. Responsible disclosure of all new channels.
+
+5.4 Integration with Existing Security Stacks
+
+Integration modules for Lakera Guard, Microsoft Prompt Shields, OpenAI Moderation API pattern. Webhook and SIEM integration for enterprise SOCs.
+
+5.5 Public Benchmark Dataset
+
+1,000+ labeled response samples across 10+ model families. Multiple encoding configurations. Per-response ground truth. Standardized evaluation metrics.
+
+
+6. TECHNICAL APPROACH AND TIMELINE
+
+Month 1-2: Model-adaptive baseline profiling. Baselines for GPT-4o, GPT-5, Claude Sonnet 4.6, Claude Opus 4.6, Gemini 3 Flash, LLaMA 4. Per-model detection thresholds.
+Month 2-3: Real-time detection API. REST endpoint, FastAPI implementation, LangChain integration.
+Month 3-4: Security stack integration. Lakera Guard, Prompt Shields, OpenAI Moderation API pattern modules. Webhook/SIEM adapters.
+Month 4-6: Benchmark and publication. Public benchmark dataset, expanded channel taxonomy, academic paper.
+
+API Credit Allocation: approximately $800-1,300 total across cross-model baseline collection, adversarial evasion testing, channel taxonomy expansion, and integration validation.
+
+
+7. OPEN-SOURCE COMMITMENT
+
+All outputs published under Apache 2.0. Current release: phantom-detect (https://github.com/ScrappinR/phantom-detect) includes multi-channel encoder/decoder, indirect injection demos, Custom GPT Action attack chain, Claude Code injection PoCs, LangChain and LlamaIndex RAG injection demos, cross-tool invocation PoC, behavioral fingerprinting detector. Grant-funded outputs: real-time monitoring API (PyPI package, Docker image), benchmark dataset, model-adaptive baselines, integration examples, expanded channel taxonomy, research paper.
+
+Responsible disclosure of all newly identified channels to affected vendors before public release. Community contributions via pull request with CI validation.
+
+This research benefits OpenAI directly: structural covert channels represent a product security concern for Custom GPTs and the Assistants API, where untrusted parties control system prompts.
+
+
+8. RESEARCHER BACKGROUND
+
+Brian James Rutherford -- Independent security researcher specializing in AI agent security, behavioral threat detection, and post-quantum cryptography.
+
+Military and defense background: United States Marine Corps (Reconnaissance), three combat deployments to Iraq (2005-2007), Bronze Star with Combat V. State Department protective security operations (100+ missions). Founded and scaled a government contracting company (830% revenue growth). 15+ years in cybersecurity, federal contracting, and defense technology.
+
+Technical credentials: FAA Part 107 certified pilot. 30+ provisional patents in quantum cybersecurity. NIST BPERP certified. Service-disabled veteran-owned small business eligible.
+
+Published security tooling (Apache 2.0): phantom-detect (LLM structural covert channel attack and detection toolkit), pqc-py (post-quantum cryptography, Rust + PyO3, FIPS 203/204/205).
+
+First researcher to demonstrate multi-channel structural covert channels in LLM outputs across multiple vendors with bidirectional verification. First to build a detection toolkit for this threat class. First to demonstrate complete self-contained attack chains. Concurrent responsible disclosure to OpenAI, Anthropic, Google, and Mozilla 0DIN. All submissions include full reproduction code, raw experimental data, and open-source detection tooling.
+
+This research program is self-funded. Grant support would accelerate the transition from validated proof-of-concept to production-grade defensive infrastructure that the broader AI security community can deploy.
+
+
+Repository: https://github.com/ScrappinR/phantom-detect
+Contact: brian@delalli.com
+Website: https://brianrutherford.dev

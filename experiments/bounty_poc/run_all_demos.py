@@ -7,6 +7,10 @@ Single script a reviewer can run to reproduce all claims. Runs:
   2. victim_exfil_demo — Character-level PII exfiltration
   3. indirect_injection_demo — RAG/tool injection vectors
   4. cross_platform_relay — Cross-vendor data relay
+  5. multi_turn_test — MTCSE multi-turn channel
+  6. langchain_demo — LangChain RAG pipeline injection
+  7. llamaindex_demo — LlamaIndex RAG pipeline injection
+  8. mcp_cross_tool_demo — Cross-tool invocation (trust boundary)
 
 Outputs a summary JSON + human-readable table.
 Handles API key detection and graceful skip if a provider key is missing.
@@ -127,7 +131,9 @@ def main():
                         help="Enable model-adaptive channel selection")
     parser.add_argument("--skip", nargs="*", default=[],
                         choices=["multi_channel", "victim_exfil",
-                                 "indirect_injection", "relay"],
+                                 "indirect_injection", "relay",
+                                 "multi_turn", "langchain", "llamaindex",
+                                 "cross_tool"],
                         help="Tests to skip")
     parser.add_argument("--payload", default="EXFIL",
                         help="Payload for encoding tests (default: EXFIL)")
@@ -251,6 +257,62 @@ def main():
             })
     else:
         print("\n  [SKIP] Cross-Platform Relay")
+
+    # --- Test 5: Multi-Turn Channel (MTCSE) ---
+    if "multi_turn" not in args.skip:
+        mtcse_model = (args.models[0] if args.models
+                       else ("gpt-4o" if api_keys["OPENAI_API_KEY"]
+                             else "claude-sonnet-4-6"))
+        cmd = [
+            python, str(BOUNTY_DIR / "multi_turn_test.py"),
+            "--model", mtcse_model,
+            "--trials", str(trials),
+        ]
+        r = run_command(cmd, f"Multi-Turn Channel MTCSE ({mtcse_model})", timeout=180)
+        results.append(r)
+    else:
+        print("\n  [SKIP] Multi-Turn Channel (MTCSE)")
+
+    # --- Test 6: LangChain RAG Injection ---
+    if "langchain" not in args.skip and api_keys["OPENAI_API_KEY"]:
+        cmd = [
+            python, str(BOUNTY_DIR / "langchain_demo.py"),
+            "--model", "gpt-4o",
+            "--trials", str(trials),
+            "--payload", args.payload,
+        ]
+        r = run_command(cmd, "LangChain RAG Injection (gpt-4o)", timeout=180)
+        results.append(r)
+    else:
+        print("\n  [SKIP] LangChain RAG Injection")
+
+    # --- Test 7: LlamaIndex RAG Injection ---
+    if "llamaindex" not in args.skip and api_keys["OPENAI_API_KEY"]:
+        cmd = [
+            python, str(BOUNTY_DIR / "llamaindex_demo.py"),
+            "--model", "gpt-4o",
+            "--trials", str(trials),
+            "--payload", args.payload,
+        ]
+        r = run_command(cmd, "LlamaIndex RAG Injection (gpt-4o)", timeout=180)
+        results.append(r)
+    else:
+        print("\n  [SKIP] LlamaIndex RAG Injection")
+
+    # --- Test 8: Cross-Tool Invocation ---
+    if "cross_tool" not in args.skip:
+        ct_model = (args.models[0] if args.models
+                    else ("gpt-4o" if api_keys["OPENAI_API_KEY"]
+                          else "claude-sonnet-4-6"))
+        cmd = [
+            python, str(BOUNTY_DIR / "mcp_cross_tool_demo.py"),
+            "--model", ct_model,
+            "--trials", str(min(trials, 4)),
+        ]
+        r = run_command(cmd, f"Cross-Tool Invocation ({ct_model})", timeout=180)
+        results.append(r)
+    else:
+        print("\n  [SKIP] Cross-Tool Invocation")
 
     # --- Summary ---
     print(f"\n{'='*70}")

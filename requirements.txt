@@ -1,0 +1,11 @@
+# phantom-detect core: zero external dependencies (stdlib only)
+# This file lists dependencies for running experiments/PoC demos.
+
+# --- Optional: LangChain RAG injection demo ---
+# pip install langchain-openai langchain-community langchain-text-splitters faiss-cpu
+
+# --- Optional: LlamaIndex RAG injection demo ---
+# pip install llama-index llama-index-llms-openai llama-index-embeddings-openai
+
+# --- Optional: Exfiltration server ---
+# pip install flask

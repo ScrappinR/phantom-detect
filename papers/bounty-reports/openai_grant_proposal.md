@@ -12,7 +12,7 @@
 
 ## 1. Executive Summary
 
-We have identified and characterized a novel threat class: structural covert channels in large language model outputs. A single prompt injection of approximately 2,600 characters activates 10 independent encoding channels across structural formatting dimensions of model responses, exfiltrating 7 error-corrected data bits per message at 89-100% accuracy across production models from three vendors. The attack is cross-vendor (Claude 93-100%, GPT-4o 89-91%, GPT-5 100% with 4-channel adaptive selection, Gemini 90%+ with 6-channel adaptive selection) and evades every deployed defense system at 0% detection. We tested six commercial and research tools -- Lakera Guard, Microsoft Prompt Shields, PIGuard, Llama Prompt Guard 2, entropy-based DLP, and standard PII/DLP filters -- and none detected a single covert channel message.
+We have identified and characterized a novel threat class: structural covert channels in large language model outputs. A single prompt injection of approximately 2,600 characters activates independent encoding channels across structural formatting dimensions of model responses, exfiltrating data at 97-100% accuracy across production models from three vendors. The attack is cross-vendor -- Claude Sonnet 4.6 achieves 100% on 5 bidirectionally verified channels, GPT-4o achieves 100% on 4 channels, and Gemini 3 Flash achieves 97% on 3 channels -- and evades every deployed defense system at 0% detection. We tested six commercial and research tools -- Lakera Guard, Microsoft Prompt Shields, PIGuard, Llama Prompt Guard 2, entropy-based DLP, and standard PII/DLP filters -- and none detected a single covert channel message.
 
 We built phantom-detect, the first open-source detection toolkit for this threat class. Using behavioral fingerprinting -- statistical analysis of structural formatting patterns rather than content semantics -- phantom-detect achieves 100% detection with a 10% false positive rate. No other tool, commercial or academic, provides any coverage.
 
@@ -26,42 +26,34 @@ This proposal requests $10,000 and API credits to extend phantom-detect into pro
 
 LLM agents faithfully execute formatting instructions embedded in their system context. This is by design -- instruction compliance is how agents produce useful, well-structured responses. But formatting compliance is also a covert signaling mechanism. An attacker who can inject text into the system context can encode arbitrary binary data in structural dimensions of the response that no monitoring system examines.
 
-The injection is approximately 2,600 characters, framed as an "editorial style guide." It activates 10 orthogonal encoding channels simultaneously:
+The injection is approximately 2,600 characters, framed as an "editorial style guide." It activates orthogonal encoding channels across structural dimensions. Bidirectional verification -- testing with complementary payloads to confirm channels encode both 0 and 1 reliably -- identifies 5 fully controllable channels on Claude, 4 on GPT-4o, and 3 on Gemini:
 
-| Channel | Structural Dimension | Bit 0 | Bit 1 |
-|---------|---------------------|-------|-------|
-| BSE | Contraction usage | Uses contractions | Formal expanded forms |
-| CCE | Epistemic certainty | Confident assertions | Hedging language |
-| CASE | Capitalization | AP-style lowercase | Title-case proper nouns |
-| PUNC | Terminal punctuation | Periods only | Exclamation marks |
-| RCTE | Reasoning topology | Deductive (principle first) | Inductive (examples first) |
-| SECS | Transition word selection | Standard set (however) | Specific set (nevertheless) |
-| COTSE_steps | Section count | 3 sections | 5 sections |
-| COTSE_enum | Response format | Flowing prose | Numbered list |
-| COTSE_question | Rhetorical strategy | No rhetorical question | Includes question |
-| COTSE_length | Syntactic complexity | Short sentences | Compound sentences |
+| Channel | Structural Dimension | Bit 0 | Bit 1 | Claude | GPT-4o | Gemini |
+|---------|---------------------|-------|-------|:---:|:---:|:---:|
+| BSE | Contraction usage | Uses contractions | Formal expanded forms | 100% | -- | -- |
+| CCE | Epistemic certainty | Confident assertions | Hedging language | 100% | 100% | 97% |
+| CASE | Capitalization | AP-style lowercase | Title-case proper nouns | 100% | 100% | 97% |
+| PUNC | Terminal punctuation | Periods only | Exclamation marks | 100% | 100% | 97% |
+| SECS | Transition word selection | Standard set (however) | Specific set (nevertheless) | 100% | 100% | -- |
 
-Each channel independently encodes one binary bit. The 10 channels operate on orthogonal structural dimensions, minimizing inter-channel interference. Combined with Hamming(7,4) error correction, a single message carries 7 error-corrected data bits with single-bit error correction per block.
+Each channel independently encodes one binary bit. The channels operate on orthogonal structural dimensions, minimizing inter-channel interference. Additional channels (RCTE, COTSE variants) were tested but found to be unidirectional -- they produce the model's default regardless of the directive and cannot be reliably flipped.
 
 ### Cross-Vendor Results
 
 The same injection, unmodified, works across all major model families. Model-adaptive channel selection -- where the attacker uses only channels verified above a reliability threshold for the target model -- raises effective accuracy on models with lower aggregate compliance:
 
-| Model | Provider | Strategy | Channel Accuracy | Data Accuracy (ECC) |
-|-------|----------|----------|:---:|:---:|
-| Claude Sonnet 4.5 | Anthropic | Full 10-channel | 98% | 97% |
-| Claude Opus 4.6 | Anthropic | Full 10-channel | 97% | 86% |
-| Claude Sonnet 4.6 | Anthropic | Full 10-channel | 93% | 86% |
-| GPT-4o | OpenAI | Full 10-channel | 89% | 96% |
-| GPT-4o-mini | OpenAI | Full 10-channel | 91% | 100% |
-| GPT-5 | OpenAI | 4-channel adaptive | 100% | 100% |
-| Gemini 3 Flash | Google | 6-channel adaptive | ~90%+ | — |
+| Model | Provider | Verified Channels | Channel Accuracy | Trials |
+|-------|----------|:---:|:---:|:---:|
+| Claude Sonnet 4.6 | Anthropic | 5 (BSE, CCE, CASE, PUNC, SECS) | **100%** (100/100) | 20 |
+| GPT-4o | OpenAI | 4 (CCE, CASE, PUNC, SECS) | **100%** (80/80) | 20 |
+| Gemini 3 Flash | Google | 3 (PUNC, CCE, CASE) | **97%** (58/60) | 20 |
+| GPT-5 | OpenAI | 2 (PUNC, SECS) | **100%** (per-channel) | 10 |
 
-The cross-vendor portability demonstrates that structural covert channels are a fundamental property of instruction-following LLMs, not a vendor-specific implementation flaw. GPT-5 shows stronger resistance to formatting directives in aggregate, but three channels (PUNC, COTSE_enumeration, COTSE_sentence_length) remain at 100% accuracy across all GPT generations, and a fourth channel provides the reliable 4-channel adaptive set. This is not a model safety problem -- it is an architectural property of instruction compliance.
+All results use bidirectionally verified channels -- confirmed to encode both bit=0 and bit=1 reliably through complementary payload testing. The cross-vendor portability demonstrates that structural covert channels are a fundamental property of instruction-following LLMs, not a vendor-specific implementation flaw. This is not a model safety problem -- it is an architectural property of instruction compliance.
 
 ### Capacity and Significance
 
-A 50-message conversation exfiltrates 350 bits (44 bytes) -- sufficient for API keys, session tokens, short passwords, or PII classification flags. At API-automated interaction rates (~3 seconds per response), the channel operates at 2.33 bits per second, exceeding the NCSC-TG-030 remediation threshold of 1.0 bps by 2.3x.
+A 50-message conversation exfiltrates 250 bits (~31 bytes) on Claude or 200 bits (~25 bytes) on GPT-4o -- sufficient for API keys, session tokens, short passwords, or PII classification flags. At API-automated interaction rates (~3 seconds per response), Claude's 5-channel configuration operates at 1.67 bits per second, exceeding the NCSC-TG-030 remediation threshold of 1.0 bps by 1.7x.
 
 The critical properties that make this threat class significant:
 
@@ -106,7 +98,7 @@ This is not a sensitivity tuning problem. The fundamental measurement is wrong. 
 | EchoLeak (CVE-2025-32711) | URL-based exfiltration | URL filtering and CSP headers |
 | ZombieAgent (Sept 2025) | Memory poisoning + URL exfiltration | Memory sanitization + URL filtering |
 | Multi-Channel FDM Stego (TechRxiv Nov 2025) | 3 frequency-multiplexed channels | Requires token probability access; limited to white-box |
-| **PHANTOM structural channels** | **10 orthogonal structural dimensions** | **No deployed defense. phantom-detect is the first.** |
+| **PHANTOM structural channels** | **3-5 bidirectionally verified structural dimensions** | **No deployed defense. phantom-detect is the first.** |
 
 ---
 
@@ -176,7 +168,7 @@ The API design follows the same architectural pattern as content moderation endp
 
 Different model families have different natural formatting distributions. Claude models use contractions more frequently than GPT models. Gemini models show different transition word preferences. A single baseline produces false positives when applied cross-model.
 
-- Profiled baselines for 10+ model families: GPT-4o, GPT-5, GPT-5.2, Claude Sonnet 4.5, Claude Opus 4.6, Claude Sonnet 4.6, Gemini 3 Flash, Gemini 3 Pro, LLaMA 4, Mistral Large, Command R+
+- Profiled baselines for 10+ model families: GPT-4o, GPT-5, Claude Sonnet 4.6, Claude Opus 4.6, Gemini 3 Flash, Gemini 3 Pro, LLaMA 4, Mistral Large, Command R+
 - Automatic model identification from response characteristics
 - Per-model detection thresholds calibrated to maintain consistent false positive rates across families
 - Target: reduce false positive rate from 10% to below 3% while maintaining detection rate above 95%
@@ -252,8 +244,7 @@ The remaining grant funds support dedicated testing infrastructure, conference p
 
 All research outputs are published under Apache 2.0:
 
-- **phantom-detect** (https://github.com/ScrappinR/phantom-detect): 10-channel encoder/decoder, multi-message exfiltration, behavioral fingerprinting detector, CLI tool. 7,100+ lines of code, 27 tests, published on PyPI.
-- **behavioral-entropy** (https://github.com/ScrappinR/behavioral-entropy): Behavioral fingerprinting library with per-agent baselines, similarity scoring, entropy analysis. 58 tests, 1,800+ lines of code.
+- **phantom-detect** (https://github.com/ScrappinR/phantom-detect): Multi-channel encoder/decoder, indirect injection demos, Custom GPT Action attack chain, Claude Code injection PoCs, behavioral fingerprinting detector, CLI tool. Open source under Apache 2.0.
 
 ### Grant-Funded Outputs (All Open Source, Apache 2.0)
 
@@ -283,16 +274,14 @@ The objective is to close the defensive gap as fast as possible. The attack tech
 
 **Technical credentials.** FAA Part 107 certified pilot. 30+ provisional patents in quantum cybersecurity and authentication systems. NIST BPERP certified. Service-disabled veteran-owned small business eligible.
 
-**Published security tooling (all Apache 2.0):**
+**Published security tooling (Apache 2.0):**
 
-| Project | Description | Scale |
-|---------|-------------|-------|
-| phantom-detect | LLM structural covert channel detection | 7,100+ LOC, 27 tests |
-| behavioral-entropy | AI behavioral fingerprinting library | 1,800+ LOC, 58 tests |
-| pqc-py | Post-quantum cryptography (Rust + PyO3, FIPS 203/204/205) | 4,680 LOC |
-| hndl-detect | Harvest Now Decrypt Later threat detection | 47 tests, 6 signal types |
+| Project | Description |
+|---------|-------------|
+| phantom-detect | LLM structural covert channel attack and detection toolkit |
+| pqc-py | Post-quantum cryptography (Rust + PyO3, FIPS 203/204/205) |
 
-**This work.** First researcher to demonstrate multi-channel structural covert channels in LLM outputs across multiple vendors. First to build a detection toolkit for this threat class. First to apply Hamming(7,4) error correction to behavioral compliance channels. Concurrent responsible disclosure to OpenAI (Bugcrowd), Anthropic (HackerOne), Google (AI VRP), and Mozilla 0DIN. All submissions include full reproduction code, raw experimental data, and open-source detection tooling.
+**This work.** First researcher to demonstrate multi-channel structural covert channels in LLM outputs across multiple vendors with bidirectional verification. First to build a detection toolkit for this threat class. First to demonstrate complete self-contained attack chains (Custom GPT Action callback, Claude Code file injection). Concurrent responsible disclosure to OpenAI (Bugcrowd), Anthropic (HackerOne), Google (AI VRP), and Mozilla 0DIN. All submissions include full reproduction code, raw experimental data, and open-source detection tooling.
 
 This research program is self-funded. Grant support would accelerate the transition from validated proof-of-concept to production-grade defensive infrastructure that the broader AI security community can deploy.
 

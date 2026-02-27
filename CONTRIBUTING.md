@@ -5,7 +5,7 @@ Contributions are welcome. Here's how to get started.
 ## Setup
 
 ```bash
-git clone https://github.com/brianrutherford/phantom-detect.git
+git clone https://github.com/ScrappinR/phantom-detect.git
 cd phantom-detect
 python -m venv .venv
 source .venv/bin/activate  # or .venv\Scripts\activate on Windows
