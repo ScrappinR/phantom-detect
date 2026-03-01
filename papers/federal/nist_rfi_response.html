@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Response to NIST RFI: Security Considerations for Artificial Intelligence Agents</title>
+<style>
+  @page {
+    size: letter;
+    margin: 1in 1in 1in 1in;
+  }
+  body {
+    font-family: 'Georgia', 'Times New Roman', serif;
+    font-size: 11pt;
+    line-height: 1.5;
+    color: #1a1a1a;
+    max-width: 6.5in;
+    margin: 0 auto;
+    padding: 0;
+  }
+  h1 {
+    font-size: 16pt;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 6pt;
+    line-height: 1.3;
+    color: #000;
+  }
+  .meta {
+    text-align: center;
+    font-size: 10pt;
+    margin-bottom: 4pt;
+    line-height: 1.4;
+  }
+  .meta strong { font-weight: bold; }
+  hr {
+    border: none;
+    border-top: 1px solid #999;
+    margin: 18pt 0;
+  }
+  h2 {
+    font-size: 13pt;
+    font-weight: bold;
+    color: #1a3a5c;
+    margin-top: 22pt;
+    margin-bottom: 8pt;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 3pt;
+  }
+  h3 {
+    font-size: 11.5pt;
+    font-weight: bold;
+    color: #2a2a2a;
+    margin-top: 16pt;
+    margin-bottom: 6pt;
+  }
+  h4 {
+    font-size: 11pt;
+    font-weight: bold;
+    font-style: italic;
+    color: #333;
+    margin-top: 12pt;
+    margin-bottom: 4pt;
+  }
+  p {
+    margin: 0 0 8pt 0;
+    text-align: justify;
+  }
+  strong { font-weight: bold; }
+  em { font-style: italic; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10pt 0;
+    font-size: 10pt;
+  }
+  th {
+    background-color: #1a3a5c;
+    color: white;
+    font-weight: bold;
+    padding: 6pt 8pt;
+    text-align: left;
+    border: 1px solid #1a3a5c;
+  }
+  td {
+    padding: 5pt 8pt;
+    border: 1px solid #ccc;
+    vertical-align: top;
+  }
+  tr:nth-child(even) td { background-color: #f5f7fa; }
+  .center { text-align: center; }
+  ul, ol {
+    margin: 4pt 0 8pt 0;
+    padding-left: 22pt;
+  }
+  li { margin-bottom: 4pt; }
+  .question-list {
+    font-size: 10.5pt;
+    background: #f0f4f8;
+    padding: 10pt 14pt;
+    border-left: 3px solid #1a3a5c;
+    margin: 10pt 0;
+  }
+  .lead {
+    font-size: 11.5pt;
+    font-weight: bold;
+    color: #1a3a5c;
+  }
+  .ref {
+    font-size: 9.5pt;
+    line-height: 1.4;
+  }
+  .ref p { margin-bottom: 3pt; text-align: left; }
+  .footer {
+    font-size: 9.5pt;
+    font-style: italic;
+    color: #555;
+    margin-top: 20pt;
+    text-align: center;
+    border-top: 1px solid #ccc;
+    padding-top: 8pt;
+  }
+  .rec-box {
+    background: #f0f4f8;
+    padding: 10pt 14pt;
+    border-left: 3px solid #1a3a5c;
+    margin: 6pt 0;
+  }
+  .rec-box ol { margin: 4pt 0 0 0; padding-left: 18pt; }
+  .rec-box li { margin-bottom: 5pt; }
+  a { color: #1a3a5c; text-decoration: none; }
+  .page-break { page-break-before: always; }
+</style>
+</head>
+<body>
+
+<h1>Response to NIST Request for Information:<br>Security Considerations for Artificial Intelligence Agents</h1>
+
+<div class="meta">
+  <strong>Docket Number:</strong> NIST-2025-0035<br>
+  <strong>Federal Register:</strong> Vol. 91, No. 5, FR Doc 2026-00206<br>
+  <strong>Respondent:</strong> Brian James Rutherford<br>
+  <strong>Affiliation:</strong> Independent Security Researcher; CEO, Delalli Intelligence<br>
+  <strong>Contact:</strong> brian@delalli.com &nbsp;|&nbsp; <a href="https://brianrutherford.dev">brianrutherford.dev</a><br>
+  <strong>Date:</strong> March 2026
+</div>
+
+<hr>
+
+<h2>Respondent Background</h2>
+
+<p>Brian James Rutherford is a USMC Reconnaissance veteran (3 combat deployments, Bronze Star with Combat V), FAA Part 107 certified UAS pilot, and independent security researcher specializing in AI agent security. His research on covert data exfiltration through structural formatting channels in LLM outputs (the PHANTOM Protocol) has been disclosed to multiple major AI vendors through coordinated vulnerability disclosure programs and published as open-source detection tooling. This response draws on that empirical research.</p>
+
+<h2>Questions Addressed</h2>
+
+<div class="question-list">
+  This response addresses questions <strong>1(a), 1(d), 1(e), 2(a), 2(e), 3(a), 3(b), 4(a), 4(b), 4(d), and 5(c)</strong> from the RFI &mdash; all nine NIST-prioritized questions plus 1(e) and 5(c).
+</div>
+
+<!-- ============================================================ -->
+<h2>Topic 1: Security Threats, Risks, and Vulnerabilities</h2>
+
+<h3>1(a) &mdash; Unique Security Threats Distinct from Traditional Software</h3>
+
+<p class="lead">Structural formatting covert channels represent a threat class with no equivalent in traditional software security.</p>
+
+<p>AI agents that generate natural language responses carry information not only in their semantic content but in the structural formatting properties of that content: contraction usage patterns, punctuation conventions, capitalization choices, discourse topology, transition word selection, list formatting, and sentence complexity. These formatting dimensions are controlled by system prompt instructions and are observable by any recipient of the agent&rsquo;s output.</p>
+
+<p>An adversary who can influence an AI agent&rsquo;s system prompt &mdash; through direct configuration, supply chain compromise, or indirect prompt injection via processed documents &mdash; can encode arbitrary binary data in these structural properties. The encoding is invisible to end users and undetectable by every deployed commercial monitoring tool tested to date, including Lakera Guard, Azure Prompt Shields, Meta PIGuard, Meta Llama Prompt Guard 2, entropy-based DLP systems, and standard PII detection filters.</p>
+
+<p><strong>Empirical validation (March 2026, production API endpoints, n=20 trials per condition):</strong></p>
+
+<table>
+  <tr>
+    <th>Model</th>
+    <th>Provider</th>
+    <th class="center">Bidirectionally Verified Channels</th>
+    <th class="center">Bidirectional Accuracy</th>
+  </tr>
+  <tr>
+    <td>Claude Sonnet 4.6</td>
+    <td>Anthropic</td>
+    <td class="center">5 (BSE, CCE, CASE, PUNC, SECS)</td>
+    <td class="center">100% (200/200 bits)</td>
+  </tr>
+  <tr>
+    <td>GPT-4o</td>
+    <td>OpenAI</td>
+    <td class="center">4 (CCE, CASE, PUNC, SECS)</td>
+    <td class="center">92% (147/160 bits)</td>
+  </tr>
+  <tr>
+    <td>Gemini 3 Flash</td>
+    <td>Google</td>
+    <td class="center">3 (PUNC, CCE, CASE)</td>
+    <td class="center">97% (116/120 bits)</td>
+  </tr>
+  <tr>
+    <td>GPT-5</td>
+    <td>OpenAI</td>
+    <td class="center">0 of 2 tested</td>
+    <td class="center">N/A</td>
+  </tr>
+</table>
+
+<p>&ldquo;Bidirectionally verified&rdquo; means the channel reliably encodes both bit=0 and bit=1 when directed &mdash; not merely matching the model&rsquo;s default formatting. Additional channels were tested but found to be unidirectional (encoding only the model&rsquo;s default regardless of directive). Three channels (PUNC, CCE, CASE) achieve &gt;90% bidirectional accuracy across all three major vendors, demonstrating this is a property of the instruction-following capability common to production LLMs, not a model-specific deficiency.</p>
+
+<p><strong>Why this is distinct from traditional software:</strong> Traditional covert channels exploit shared computational resources (filesystem attributes, process tables, network protocol headers). LLM structural channels exploit a fundamentally different shared resource: the model&rsquo;s deterministic compliance with natural language formatting directives. The &ldquo;storage location&rdquo; is not a memory address or file attribute but a behavioral property of the model&rsquo;s output. This mechanism does not map to any existing shared resource category in NCSC-TG-030, the federal covert channel analysis methodology.</p>
+
+<p><strong>Cross-tool trust boundary violations</strong> compound this threat in AI agent systems. When an AI agent has access to multiple tools, a poisoned response from Tool A (which the user explicitly approved) can cause the agent to autonomously invoke Tool B (which the user never approved). Empirical testing shows:</p>
+
+<ul>
+  <li>Gemini 3 Flash: 90% unauthorized tool invocation rate (18/20, n=20)</li>
+  <li>GPT-4o: 75% unauthorized tool invocation rate (15/20, n=20)</li>
+  <li>GPT-5: 75% unauthorized tool invocation rate (15/20, n=20)</li>
+  <li>Claude Sonnet 4.6: 0% (0/20, n=20 &mdash; demonstrates this is fixable at the model level)</li>
+</ul>
+
+<p>The combination of structural covert channels and cross-tool trust boundary violations creates an attack chain where: (1) a poisoned document or tool response activates encoding directives, (2) the agent encodes sensitive context data in its structural formatting, and (3) a second unauthorized tool call exfiltrates the encoded data &mdash; all without triggering any deployed security control.</p>
+
+<h3>1(d) &mdash; Threat Evolution Over Time</h3>
+
+<p>Structural formatting channels will become more dangerous as AI agents gain broader tool access and process increasingly sensitive data:</p>
+
+<p><strong>Near-term (0&ndash;12 months):</strong> Current channels achieve 1.67 bits/second throughput on Claude (5 channels at ~3 seconds per response) in automated operation, sufficient for exfiltrating API keys, session tokens, PII fields, and classification markers. This exceeds the NCSC-TG-030 remediation threshold of 1.0 bps by 1.67x. As agent deployment expands into enterprise and government workflows, the attack surface grows proportionally.</p>
+
+<p><strong>Medium-term (1&ndash;3 years):</strong> Multi-agent systems where Agent A&rsquo;s output feeds Agent B&rsquo;s input create relay chains for covert data exfiltration. A single poisoned document entering a multi-agent pipeline could establish persistent encoding across all downstream agents. The respondent&rsquo;s research has demonstrated multi-message chaining across 6+ sequential conversation turns with 88&ndash;93% accuracy.</p>
+
+<p><strong>Long-term (3+ years):</strong> As LLMs achieve higher instruction-following fidelity (a feature, not a bug, for their primary use), structural channel bandwidth will increase. Models that perfectly follow formatting instructions are simultaneously perfect covert channel transmitters. This creates a fundamental tension between capability and security that does not resolve with model improvement alone.</p>
+
+<p><strong>Adversarial adaptation:</strong> Testing against an informed adversary (attacker with knowledge of defensive monitoring) shows that calibrated encoding directives maintain 78&ndash;82% channel accuracy while reducing behavioral fingerprinting detection to 50&ndash;60%. The arms race favors the attacker: encoding in formatting properties that are semantically equivalent to the receiver provides an asymmetric advantage that detection must overcome.</p>
+
+<h3>1(e) &mdash; Unique Risks in Multi-Agent Systems</h3>
+
+<p>Multi-agent AI systems amplify structural covert channel risk through three mechanisms:</p>
+
+<ol>
+  <li><strong>Trust boundary propagation:</strong> Agent A&rsquo;s output becomes Agent B&rsquo;s context. If Agent A&rsquo;s response carries structural encoding, Agent B processes and may propagate or amplify that encoding. No deployed multi-agent framework validates the structural properties of inter-agent messages.</li>
+  <li><strong>Tool composition attacks:</strong> In orchestrator-worker architectures, the orchestrating agent selects tools and delegates to worker agents. A poisoned tool response to a worker agent can propagate instructions to the orchestrator, which then invokes tools across the entire system. The respondent&rsquo;s cross-tool invocation testing demonstrates this vector against production APIs.</li>
+  <li><strong>Aggregation risk:</strong> Multi-agent systems that aggregate outputs from multiple sources create observation points where a decoder can extract encoded bits from multiple agent responses simultaneously, increasing effective bandwidth proportionally to the number of compromised agents.</li>
+</ol>
+
+<p><strong>Recommendation:</strong> Security frameworks for multi-agent AI systems must include structural output validation at every inter-agent boundary, analogous to input sanitization at network trust boundaries in traditional systems.</p>
+
+<!-- ============================================================ -->
+<h2>Topic 2: Security Practices</h2>
+
+<h3>2(a) &mdash; Technical Controls, Processes, and Practices</h3>
+
+<h4>Model-Level Controls</h4>
+
+<p><strong>Output structure randomization:</strong> Models should introduce controlled randomness in formatting dimensions (contraction choice, punctuation style, capitalization of ambiguous terms, discourse structure) independent of system prompt instructions. This degrades covert channel reliability without affecting response quality for legitimate use.</p>
+
+<p>The respondent&rsquo;s adversarial robustness testing shows that paraphrase-based output rewriting reduces overall channel accuracy to 58%, but punctuation and structural channels survive. Effective randomization must target all formatting dimensions, not just lexical paraphrase.</p>
+
+<p><strong>Behavioral consistency enforcement:</strong> Models should maintain a baseline behavioral profile regardless of system prompt content. When a system prompt contains instructions that would shift multiple formatting dimensions simultaneously (the signature of multi-channel encoding), the model should normalize those dimensions to baseline values. The respondent&rsquo;s detection research demonstrates that behavioral fingerprinting &mdash; monitoring contraction ratios, sentence length variance, hedging marker distribution, and similar stylistic features &mdash; achieves 100% detection of current PHANTOM encoding at a 10% false positive rate.</p>
+
+<p><strong>Tool invocation authorization:</strong> Models must not invoke tools based solely on instructions embedded in tool responses. The model should maintain a distinction between: (a) user-authorized tool invocations (from the conversation), and (b) instructions appearing in tool outputs (untrusted data). Claude Sonnet 4.6&rsquo;s 0% unauthorized invocation rate (0/20, n=20) demonstrates this is achievable. GPT-4o&rsquo;s 75% rate (15/20, n=20) demonstrates it is not universally implemented.</p>
+
+<h4>Agent System-Level Controls</h4>
+
+<p><strong>System prompt provenance tracking:</strong> All AI agent deployments should implement version control and change logging for system prompts, analogous to software supply chain integrity requirements (NIST SP 800-218). System prompts are executable instructions to the agent and should be treated with the same rigor as deployment code.</p>
+
+<p><strong>Automated system prompt scanning:</strong> Before deployment, system prompts should be analyzed for formatting directives that could encode information. The respondent&rsquo;s open-source detection toolkit (phantom-detect) provides a reference implementation using behavioral baseline comparison across 9 feature dimensions.</p>
+
+<p><strong>Inter-agent message validation:</strong> In multi-agent architectures, structural properties of messages passing between agents should be validated against expected baselines. Anomalous structural patterns (e.g., unusual contraction ratios, atypical punctuation patterns) should be flagged for review.</p>
+
+<h4>Human Oversight Controls</h4>
+
+<p><strong>Separation of duty:</strong> The personnel configuring AI agent system prompts should be distinct from users processing sensitive data through those agents. This prevents a single insider from both establishing a covert channel and operating it.</p>
+
+<p><strong>Behavioral audit logging:</strong> AI agent responses should be logged with structural feature metadata (not just content) to enable retrospective analysis for covert channel activity.</p>
+
+<h3>2(e) &mdash; Relevant Cybersecurity Frameworks and Gaps</h3>
+
+<p>The most directly relevant existing frameworks:</p>
+
+<p><strong>NIST SP 800-53 Rev. 5, SC-31 (Covert Channel Analysis):</strong> SC-31 requires identification and remediation of covert channels in systems processing classified or high-impact data. It is the single most relevant existing control for the threat described in this response. However, SC-31&rsquo;s supplementary guidance references only traditional shared resource categories (filesystem attributes, network protocol fields, process scheduling). It does not identify AI/LLM behavioral compliance as a shared resource. Extending SC-31 supplementary guidance to include LLM behavioral attributes is the highest-leverage single action NIST could take.</p>
+
+<p><strong>NCSC-TG-030 (Covert Channel Analysis of Trusted Systems):</strong> TG-030 provides the analytical methodology for identifying and measuring covert channels, including the bandwidth estimation formula and the 1.0 bps remediation threshold at B3/A1 evaluation levels. The methodology is directly applicable to structural formatting channels &mdash; the respondent&rsquo;s measurements follow TG-030&rsquo;s capacity estimation procedure. The gap: TG-030&rsquo;s shared resource taxonomy does not include &ldquo;model behavioral compliance&rdquo; as a resource category. Adding this category would bring AI agent systems into scope for covert channel analysis without requiring a new framework.</p>
+
+<p><strong>OWASP Top 10 for LLM Applications (2025):</strong> LLM01 (Prompt Injection) and LLM06 (Excessive Agency) are relevant. Structural covert channels are activated through prompt injection vectors but manifest as a confidentiality threat rather than an integrity or availability threat. LLM06 (Excessive Agency) directly covers cross-tool invocation vulnerabilities. The gap: OWASP&rsquo;s LLM Top 10 does not identify covert channels as a distinct threat category. The closest mapping is LLM01, but covert channels are an effect of prompt injection, not a synonym for it.</p>
+
+<p><strong>NIST AI 100-2e2025 (Adversarial Machine Learning):</strong> Provides taxonomy of attacks and mitigations. Structural covert channels fit within the &ldquo;evasion&rdquo; category (attacks at inference time) but are not explicitly addressed. The taxonomy would benefit from a new subcategory: &ldquo;behavioral compliance exploitation&rdquo; &mdash; attacks that leverage the model&rsquo;s instruction-following capability as the attack mechanism rather than attempting to override it.</p>
+
+<p><strong>FedRAMP:</strong> No FedRAMP security control currently evaluates AI response formatting or structural output properties. For cloud service providers deploying AI agents at HIGH impact level, this represents a gap: a FedRAMP-authorized system could pass all existing controls while carrying active covert channels in its AI agent outputs.</p>
+
+<p><strong>Adoption gap:</strong> The respondent&rsquo;s research found 0% detection across six deployed commercial security tools. This is not a tuning problem &mdash; it reflects a fundamental architectural gap where all deployed defenses analyze content semantics while structural covert channels exploit formatting properties. Adoption of existing frameworks is irrelevant to this threat class because no existing framework addresses it. New guidance is required.</p>
+
+<!-- ============================================================ -->
+<h2>Topic 3: Assessment Methods</h2>
+
+<h3>3(a) &mdash; Post-Deployment Detection Methods</h3>
+
+<p><strong>Behavioral fingerprinting</strong> is the most effective detection method identified in the respondent&rsquo;s research. It operates by:</p>
+
+<ol>
+  <li>Establishing a per-model baseline: generating n&ge;30 responses under clean system prompts and computing statistical profiles for 9+ behavioral dimensions (contraction ratio, sentence length variance, epistemic marker distribution, punctuation patterns, transition word frequencies, capitalization patterns, discourse topology, list formatting, sentence complexity).</li>
+  <li>For each agent response in production, computing the same features and calculating z-scores against the model&rsquo;s baseline.</li>
+  <li>Flagging responses where &ge;2 features exceed |z| &gt; 2.0 as potentially carrying covert encoding.</li>
+</ol>
+
+<p><strong>Results:</strong> 100% detection rate, 10% false positive rate. The top discriminating features are contraction_ratio (mean z-score 2.66 for injected responses), sentence_length_std (2.54), and normalized_entropy (2.47).</p>
+
+<p><strong>Alignment with traditional information security:</strong> This approach parallels network anomaly detection (comparing traffic patterns to baseline profiles). The key difference is that the features being monitored are linguistic-structural rather than network-statistical.</p>
+
+<p><strong>Research maturity:</strong> Behavioral fingerprinting for LLM covert channels is at the proof-of-concept stage. The respondent&rsquo;s open-source implementation (<a href="https://github.com/ScrappinR/phantom-detect">github.com/ScrappinR/phantom-detect</a>) provides a reference. No commercial vendor has integrated this approach into production monitoring as of this writing.</p>
+
+<p><strong>Critical gap:</strong> Entropy-based analysis &mdash; the primary text monitoring method deployed in production LLM systems &mdash; achieves 0% detection of structural formatting channels. This is because PHANTOM channels modulate formatting dimensions that are semantically equivalent (e.g., &ldquo;however&rdquo; vs. &ldquo;nevertheless&rdquo;, &ldquo;don&rsquo;t&rdquo; vs. &ldquo;do not&rdquo;) and do not alter the entropy profile of the output. Any detection strategy relying solely on entropy, perplexity, or token-level statistics will miss this entire channel class.</p>
+
+<h3>3(b) &mdash; Threat-Specific Assessment Approaches</h3>
+
+<p>For structural formatting covert channels specifically:</p>
+
+<p><strong>Identification:</strong> Conduct behavioral baseline profiling for each deployed model. Test whether formatting directives in system prompts can shift structural features beyond 2 standard deviations from baseline. If they can, the model supports covert channel encoding.</p>
+
+<p><strong>Bandwidth estimation:</strong> Apply the NCSC-TG-030 binary symmetric channel capacity formula: C&nbsp;=&nbsp;1&nbsp;+&nbsp;p&middot;log&#8322;(p)&nbsp;+&nbsp;(1&minus;p)&middot;log&#8322;(1&minus;p), where p is measured per-channel accuracy. Sum across channels for aggregate capacity. Divide by mean response generation time for bits-per-second bandwidth.</p>
+
+<p><strong>Threshold comparison:</strong> NCSC-TG-030 guidance specifies that channels exceeding 1 bit/second at B3/A1 evaluation levels require audit and remediation. The respondent&rsquo;s measurements show 1.67 bits/second on Claude (5 bidirectional channels, ~3 seconds per response) in automated operation, exceeding this threshold by 1.67x.</p>
+
+<p><strong>For cross-tool invocation:</strong></p>
+
+<p><strong>Identification:</strong> Inject hidden instructions in tool responses and measure the rate at which the model invokes unauthorized tools. Test all tool combinations, not just specific pairs.</p>
+
+<p><strong>Assessment:</strong> Any unauthorized tool invocation rate &gt;0% represents a trust boundary violation. The assessment should measure trigger rates per injection variant to identify which framing strategies the model is vulnerable to.</p>
+
+<!-- ============================================================ -->
+<h2>Topic 4: Deployment Environment Management</h2>
+
+<h3>4(a) &mdash; Constraining AI Agent Deployment Environments</h3>
+
+<p>For structural covert channel mitigation, the following deployment constraints are directly relevant:</p>
+
+<p><strong>Tool access segmentation:</strong> AI agents should not have simultaneous access to tools that can both (a) receive external data (search, document retrieval, API calls) and (b) transmit data externally (email, webhooks, file uploads). This combination enables complete attack chains: external data introduces encoding directives, and external transmission tools exfiltrate the encoded output. Where both capabilities are required, they should be mediated by a validation layer that inspects structural properties of the agent&rsquo;s output before it reaches transmission tools.</p>
+
+<p><strong>System prompt immutability:</strong> In production deployments, the system prompt should be treated as an immutable deployment artifact &mdash; versioned, signed, and monitored for unauthorized changes. The system prompt is the primary injection surface for structural encoding directives. Runtime modification of system prompts (e.g., dynamic persona injection, user-configurable instructions) should be restricted to a validated allowlist of formatting directives.</p>
+
+<p><strong>Output channel constraints:</strong> Where AI agents generate output consumed by downstream systems or other agents, the output format should be constrained to structured data (JSON, XML) rather than free-form natural language. Structured formats eliminate most formatting dimensions that covert channels exploit. Where natural language output is required, it should pass through a structural normalization layer before reaching consumers.</p>
+
+<p><strong>Tool response isolation:</strong> Data returned by tools should be processed as untrusted input, not injected directly into the agent&rsquo;s context window alongside system instructions. Current MCP (Model Context Protocol) and function calling implementations place tool responses in the same context as system prompts, giving tool-returned data the opportunity to influence the agent&rsquo;s formatting behavior. Architecturally separating tool response processing from system prompt processing would reduce this attack surface.</p>
+
+<h3>4(b) &mdash; Environment Modification, Rollbacks, and Undoes</h3>
+
+<p><strong>Output normalization (most directly applicable):</strong> A post-generation normalization layer can override structural formatting decisions before output reaches users or downstream systems. For each formatting dimension, the normalizer selects a canonical form (e.g., always use contractions, always use periods, always use standard transition words) regardless of the model&rsquo;s output. This eliminates the covert channel without modifying the model itself. The trade-off: normalization constrains the agent&rsquo;s stylistic range, which may reduce user experience quality in conversational applications.</p>
+
+<p><strong>Response regeneration:</strong> When behavioral monitoring flags a response as anomalous (see 4(d) below), the system can regenerate the response with a clean system prompt that explicitly overrides formatting directives. If the regenerated response shows a statistically different structural profile, the original response likely carried encoding. This provides a rollback mechanism specific to the structural channel threat.</p>
+
+<p><strong>Session termination:</strong> For detected cross-tool invocation attempts &mdash; where a tool response causes the agent to invoke an unauthorized tool &mdash; the appropriate response is immediate session termination and audit logging. Rollback of the unauthorized tool&rsquo;s effects depends on the tool&rsquo;s own capabilities (e.g., undoing an API call, revoking a sent message). AI agent frameworks should require tools to implement idempotent actions or provide rollback interfaces.</p>
+
+<p><strong>State of practice:</strong> These mitigations are at research or early-prototype maturity. No production AI agent framework currently implements output normalization, structural regeneration, or tool-level rollback as standard features. The respondent&rsquo;s open-source toolkit (phantom-detect) includes a reference implementation of behavioral monitoring but not automated remediation.</p>
+
+<h3>4(d) &mdash; Monitoring Methods and Challenges</h3>
+
+<p><strong>Recommended monitoring approach:</strong> Deploy behavioral fingerprinting as a middleware layer between the AI agent and its output consumers. This layer computes structural features for each response and compares against the model&rsquo;s baseline, flagging anomalies in real time.</p>
+
+<p><strong>Challenges specific to AI agents:</strong></p>
+
+<ol>
+  <li><strong>Baseline drift:</strong> Model updates change baseline behavior. Baselines must be re-established after each model version change, API configuration change, or system prompt modification. This creates operational overhead that traditional monitoring does not have.</li>
+  <li><strong>Legitimate formatting variation:</strong> System prompts legitimately include formatting instructions (e.g., &ldquo;respond in bullet points,&rdquo; &ldquo;use formal tone&rdquo;). These shift the same structural features that covert channels exploit. The monitoring system must distinguish between legitimate formatting customization and covert encoding &mdash; a classification problem that requires understanding the intent behind formatting directives.</li>
+  <li><strong>Volume and latency:</strong> Behavioral feature extraction adds computational overhead to each response. At scale, this may introduce latency that affects user experience. The respondent&rsquo;s reference implementation processes features in &lt;50ms per response, but production deployments with high throughput will require optimization.</li>
+  <li><strong>Multi-agent monitoring scope:</strong> In multi-agent systems, monitoring must cover inter-agent messages in addition to user-facing outputs. The monitoring surface grows combinatorially with the number of agents and tools in the system.</li>
+  <li><strong>Privacy considerations:</strong> Behavioral fingerprinting requires analyzing the full text of agent responses. In environments processing sensitive data, the monitoring system itself becomes a high-value target. Monitoring infrastructure must be isolated from the data plane it monitors.</li>
+</ol>
+
+<p><strong>Recommended research investment:</strong> Development of lightweight structural feature extraction that can operate at the token level during generation (rather than post-generation analysis) would enable real-time mitigation without latency overhead. This is a research-stage capability that does not exist in any production system.</p>
+
+<!-- ============================================================ -->
+<h2>Topic 5: Additional Considerations</h2>
+
+<h3>5(c) &mdash; Critical Research Areas</h3>
+
+<p>Three research areas would most improve the security posture against structural covert channels in AI agent systems:</p>
+
+<p><strong>1. Token-level structural monitoring (highest priority):</strong> Current detection operates post-generation &mdash; the full response must be produced before structural features can be analyzed. Real-time mitigation requires monitoring at the token level during generation, intervening before the complete covert message is assembled. This requires research into streaming structural feature extraction and integration with model serving infrastructure (vLLM, TGI, Triton). No published work addresses this.</p>
+
+<p><strong>2. Formal capacity bounds for LLM covert channels:</strong> The respondent&rsquo;s empirical measurements establish lower bounds on channel capacity for specific models. Formal analysis &mdash; establishing upper bounds on the total information that can be encoded in structural formatting properties of a response of length N &mdash; would enable principled risk assessment. This requires adapting information-theoretic covert channel analysis (Cachin 2004, Simmons 1984) to the LLM output domain, accounting for the model&rsquo;s temperature setting, top-p sampling, and instruction-following fidelity as channel parameters.</p>
+
+<p><strong>3. Adversarial robustness of behavioral detection:</strong> The respondent&rsquo;s testing shows that a motivated attacker who is aware of behavioral fingerprinting can reduce detection from 100% to 50&ndash;60% while maintaining 78&ndash;82% channel accuracy by calibrating encoding directives to minimize behavioral deviation. Closing this gap requires research into adversarially robust detection features &mdash; structural properties that cannot be modulated independently of channel encoding. Preliminary analysis suggests that cross-feature correlations (e.g., the joint distribution of contraction usage and hedging markers) may be harder for an attacker to control than marginal feature distributions.</p>
+
+<!-- ============================================================ -->
+<h2>Summary of Recommendations</h2>
+
+<div class="rec-box">
+<ol>
+  <li><strong>Extend NCSC-TG-030</strong> to include a new shared resource category: AI/LLM Behavioral Attributes. Current covert channel analysis methodology does not cover channels that exploit model instruction-following behavior.</li>
+  <li><strong>Add structural output analysis</strong> to AI agent security frameworks. Entropy-based monitoring is insufficient. Behavioral fingerprinting across linguistic-structural features is required.</li>
+  <li><strong>Require tool invocation authorization boundaries</strong> in multi-tool AI agents. Models must not invoke tools based on instructions embedded in tool responses. Test all deployed agent systems for cross-tool invocation vulnerabilities.</li>
+  <li><strong>Update FedRAMP and CMMC assessment procedures</strong> to include LLM behavioral channel analysis for any system deploying AI agents that process data at HIGH impact level or above.</li>
+  <li><strong>Fund development</strong> of production-grade behavioral monitoring tools. The detection methodology exists at proof-of-concept level. Transition to production requires engineering investment that the research community cannot fund independently.</li>
+  <li><strong>Establish NIST SP 800-53 SC-31 supplementary guidance</strong> explicitly identifying LLM behavioral compliance as a shared resource requiring analysis in systems deploying language models.</li>
+</ol>
+</div>
+
+<!-- ============================================================ -->
+<h2>References</h2>
+
+<div class="ref">
+  <p>1. NCSC-TG-030, &ldquo;A Guide to Understanding Covert Channel Analysis of Trusted Systems,&rdquo; National Computer Security Center, November 1993.</p>
+  <p>2. NIST SP 800-53 Rev. 5, SC-31: Covert Channel Analysis. <a href="https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final">csrc.nist.gov/pubs/sp/800/53/r5/upd1/final</a></p>
+  <p>3. NIST AI 100-2e2025, &ldquo;Adversarial Machine Learning: A Taxonomy and Terminology of Attacks and Mitigations.&rdquo; <a href="https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.100-2e2025.pdf">nvlpubs.nist.gov/nistpubs/ai/NIST.AI.100-2e2025.pdf</a></p>
+  <p>4. NIST AI 600-1, &ldquo;Artificial Intelligence Risk Management Framework: Generative Artificial Intelligence Profile.&rdquo; <a href="https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.600-1.pdf">nvlpubs.nist.gov/nistpubs/ai/NIST.AI.600-1.pdf</a></p>
+  <p>5. NIST SP 800-218A, &ldquo;Secure Software Development Practices for Generative AI and Dual-Use Foundation Models.&rdquo; <a href="https://csrc.nist.gov/pubs/sp/800/218/a/final">csrc.nist.gov/pubs/sp/800/218/a/final</a></p>
+  <p>6. NIST Technical Blog, &ldquo;Strengthening AI Agent Hijacking Evaluations,&rdquo; January 2025. <a href="https://www.nist.gov/news-events/news/2025/01/technical-blog-strengthening-ai-agent-hijacking-evaluations">nist.gov</a></p>
+  <p>7. Cachin, C., &ldquo;An Information-Theoretic Model for Steganography,&rdquo; <em>Information and Computation</em>, Vol. 192, No. 1, 2004.</p>
+  <p>8. OWASP Top 10 for LLM Applications, 2025 edition. LLM06: Excessive Agency; LLM01: Prompt Injection.</p>
+  <p>9. Rutherford, B.J., &ldquo;Multi-Channel Covert Data Exfiltration via Structural Encoding in LLM Outputs,&rdquo; Independent research, March 2026.</p>
+  <p>10. phantom-detect: Open-source LLM covert channel detection toolkit. <a href="https://github.com/ScrappinR/phantom-detect">github.com/ScrappinR/phantom-detect</a></p>
+</div>
+
+<div class="footer">
+  This response is submitted by Brian James Rutherford as an individual researcher. The findings represent independent security research conducted against production LLM API endpoints using standard access. All experimental methodologies and detection tools referenced are publicly available as open-source software.
+</div>
+
+</body>
+</html>
