@@ -19,3 +19,7 @@ env/
 Thumbs.db
 .env
 .env.*
+
+# Internal strategy and planning docs (keep local, never commit)
+papers/bounty-research/
+BOUNTY_EXECUTION_PLAN*
