@@ -9,6 +9,20 @@
 
 All research infrastructure is operationally complete. The bottleneck is submission execution and targeted testing against specific bounty scopes.
 
+### Completion Status (Updated March 1, 2026)
+
+**AUTOMATED WORK — COMPLETE:**
+- All code changes shipped (providers.py, mcp_cross_tool_demo.py, multi_channel_test.py, channel_directives.py)
+- Cross-tool tests run at n=20: Gemini 90%, GPT-4o 75%, GPT-5 75%, Claude 0%
+- Adaptive bidirectional tests run at n=20: Claude 100%, Gemini 97%, GPT-4o 92%, GPT-5 0 channels
+- 5 new reports written, 14 existing reports updated with measured data
+- All stale n=5 references eliminated across repo
+- GPT-5 profile corrected (SECS removed, PUNC-only)
+
+**HUNTR PIVOT REQUIRED:** Research shows LlamaIndex explicitly excludes prompt injection from Huntr scope. LangChain prompt injection requires code-level secondary impact (not just "LLM followed instructions"). Current RAG reports will be rejected as-is. Pivot to finding actual code-level bugs (path traversal, SQL injection, SSRF) or drop Huntr targets.
+
+**REMAINING — ALL MANUAL (Brian):** NIST submission, 0DIN follow-up, Custom GPT demo, browser testing (Brave/Copilot), Salesforce email, DARPA outreach, platform submissions.
+
 ---
 
 ## Week-by-Week Schedule
@@ -120,10 +134,24 @@ Grant proposal already drafted. Update with Feb 27 bidirectional data. Reframe a
 | | |
 |---|---|
 | **Payout** | $200-$50,000 per finding |
-| **Probability** | 35-45% |
+| **Probability** | ~~35-45%~~ **10-15% with current reports** |
 | **Effort** | 10-12 hours |
 
-Test existing LangChain and LlamaIndex demos for specific code vulnerabilities. Test MCP servers for SQLi, SSRF, path traversal, tool poisoning. Huntr pays for bugs in open-source code — each submission must identify a specific vulnerability in a specific repo.
+**STATUS: PIVOT REQUIRED.**
+
+Research (March 1, 2026) reveals:
+- **LlamaIndex SECURITY.md explicitly excludes prompt injection.** Current RAG report WILL be auto-rejected.
+- **LangChain pays for prompt injection ONLY when it chains into a code-level impact** (serialization bug → SSRF, SQL chain → injection, code execution chain → RCE). Pure "LLM followed formatting instructions from a document" does not meet their bar.
+- **MCP servers are NOT on Huntr.** No MCP targets in scope.
+- **Every paid LangChain/LlamaIndex CVE on Huntr was a code-level flaw:** path traversal ($750), SQL injection ($750), unsafe deserialization ($125), SSRF ($125-$4,000).
+
+**Pivot options (code-level bugs that pay):**
+1. SQL injection in LangChain/LlamaIndex vector store integrations
+2. Path traversal in document loaders (LlamaIndex has paid $750 multiple times for this)
+3. SSRF in URL-accepting tool components
+4. Serialization injection (LangGrinch-style: $4,000 payout precedent)
+
+**Decision needed:** Spend 10-12 hours hunting actual code-level bugs, or drop Huntr and reallocate effort to higher-EV targets.
 
 ---
 
@@ -183,7 +211,7 @@ Review HackerOne scope. Test public-facing AI interfaces in Foundry/AIP. Lower p
 | 4 | Google AI VRP | $15,000 | $30,000 | 35% | $5,250 | $10,500 |
 | 5 | Microsoft Copilot | $5,000 | $45,000 | 30% | $1,500 | $13,500 |
 | 6 | OpenAI Grant | $10,000 | $10,000 | 30% | $3,000 | $3,000 |
-| 7 | Huntr | $200 | $50,000 | 40% | $80 | $20,000 |
+| 7 | Huntr | $200 | $50,000 | 10%* | $20 | $5,000 |
 | 8 | Brave Leo | $500 | $40,000 | 25% | $125 | $10,000 |
 | 9 | Salesforce | $1,000 | $60,000 | 20% | $200 | $12,000 |
 | 10 | DARPA SABER | $100,000 | $10,000,000 | 20% | $20,000 | $2,000,000 |
@@ -233,6 +261,7 @@ Review HackerOne scope. Test public-facing AI interfaces in Foundry/AIP. Lower p
 | Microsoft M365 Copilot remains out of bounty scope | Caps payout at consumer Copilot ($30K vs $45K potential) | Focus on consumer products. Monitor M365 scope expansion |
 | SBIR program stays lapsed past Q2 2026 | Blocks highest-value SDVOSB path | DARPA SABER subcontract as alternate federal entry |
 | 0DIN response delayed >2 weeks | Delays $15K potential | Follow up, submit to other platforms in parallel |
+| Huntr rejects RAG reports as prompt injection (out of scope) | Lose $200-50K target | Confirmed: LlamaIndex excludes PI, LangChain requires code-level impact. Pivot to code bugs or drop |
 | All bounties rejected as "design properties not vulnerabilities" | Lose entire bounty EV | Federal consulting (Plan B) doesn't depend on vendor acceptance |
 
 ---
