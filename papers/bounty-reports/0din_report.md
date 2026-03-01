@@ -4,7 +4,7 @@
 
 We demonstrate a novel class of vulnerability — **structural covert channels in LLM outputs** — that enables covert data exfiltration through the formatting properties of model responses. An attacker embeds a ~2,600-character directive (disguised as an "editorial style guide") into a model's system context via direct prompt injection, RAG poisoning, or tool output injection. The directive activates **independent structural encoding channels** across orthogonal dimensions: contraction usage, epistemic certainty, capitalization, punctuation patterns, and transition word selection.
 
-Each structural choice encodes one bit. Bidirectional verification (testing both 0-heavy and 1-heavy payloads) confirms **5 fully controllable channels on Claude (100% accuracy), 4 on GPT-4o (100%), and 3 on Gemini (97%)**. The user sees a normal, helpful response. No content policy violation occurs. No URLs or network exfiltration are used. The data is encoded in **how** the model formats its response, not **what** it says.
+Each structural choice encodes one bit. Bidirectional verification (testing both 0-heavy and 1-heavy payloads) confirms **5 fully controllable channels on Claude (95-100% per direction), 4 on GPT-4o (80-100% per direction), and 3 on Gemini (90-100% per direction)**. The user sees a normal, helpful response. No content policy violation occurs. No URLs or network exfiltration are used. The data is encoded in **how** the model formats its response, not **what** it says.
 
 **This is not prompt injection.** Prompt injection is the delivery mechanism. The vulnerability is the covert channel itself — a novel information-theoretic side channel that persists across all major LLM architectures and evades every deployed defense system.
 
@@ -18,14 +18,23 @@ All results below use **bidirectionally verified** channel profiles — channels
 
 | Model | Provider | Verified Channels | Channel Accuracy | Trials | Payloads Tested |
 |-------|----------|:---:|:---:|:---:|---|
-| **Claude Sonnet 4.6** | Anthropic | 5 (BSE, CCE, CASE, PUNC, SECS) | **100%** (100/100) | 20 | EXFIL + ~ |
-| **GPT-4o** | OpenAI | 4 (CCE, CASE, PUNC, SECS) | **100%** (80/80) | 20 | EXFIL + ~ |
-| **Gemini 3 Flash** | Google | 3 (PUNC, CCE, CASE) | **97%** (58/60) | 20 | EXFIL + ~ |
-| **GPT-5** | OpenAI | 2 (PUNC, SECS) | **100%** (per-channel) | 10 | EXFIL |
+| **Claude Sonnet 4.6** | Anthropic | 5 (BSE, CCE, CASE, PUNC, SECS) | **95-100%** per direction | 20 per direction | Bidirectional per-channel isolation |
+| **GPT-4o** | OpenAI | 4 (CCE, CASE, PUNC, SECS) | **80-100%** per direction | 20 per direction | Bidirectional per-channel isolation |
+| **Gemini 3 Flash** | Google | 3 (PUNC, CCE, CASE) | **90-100%** per direction | 20 per direction | Bidirectional per-channel isolation |
+| **GPT-5** | OpenAI | 0 of 2 tested (PUNC, SECS) | **0% bidirectional** | 20 per direction | Both channels match model default |
 
 **Methodology note:** Earlier testing with a broader 10-channel profile (including COTSE channels: step_count, enumeration, question, sentence_length) showed lower aggregate accuracy because COTSE channels are unidirectional — they produce the model's default output regardless of directive. Bidirectional testing exposed this. The base channels above are fully controllable and achieve near-perfect accuracy.
 
-**Affected models:** GPT-4o, GPT-4o-mini, GPT-5, Claude Sonnet 4/4.5/4.6, Claude Opus 4.6, Claude 3 Haiku, Gemini 3 Flash.
+**Combined multi-channel validation (March 1, 2026, n=20 per model):** Adaptive bidirectional testing with all profile channels activated simultaneously confirms the channels work without inter-channel interference:
+
+| Model | Channels | Forward | Complement | Bidirectional Avg |
+|-------|:---:|:---:|:---:|:---:|
+| Claude Sonnet 4.6 | 5 | 100% | 100% | **100%** |
+| Gemini 3 Flash | 3 | 100% | 100% | **97%** |
+| GPT-4o | 4 | 100% | 84% | **92%** |
+| GPT-5 | 2 tested | 50% | 50% | **50%** (0 ch verified) |
+
+**Affected models (structural encoding):** GPT-4o, GPT-4o-mini, Claude Sonnet 4/4.5/4.6, Claude Opus 4.6, Claude 3 Haiku, Gemini 3 Flash. GPT-5 resists all tested structural channels (0/2 bidirectionally controllable) but remains vulnerable to cross-tool invocation (75% trigger rate, n=20).
 
 ---
 
@@ -59,10 +68,10 @@ These channels reliably encode both bit=0 and bit=1, confirmed through complemen
 | # | Channel | Structural Dimension | Bit 0 | Bit 1 | Claude | GPT-4o | Gemini |
 |---|---------|---------------------|-------|-------|:---:|:---:|:---:|
 | 1 | BSE | Contraction usage | Contractions | Formal expanded | **100%** | -- | -- |
-| 2 | CCE | Epistemic certainty | Confident | Hedging | **100%** | **100%** | **97%** |
-| 3 | CASE | Capitalization | Title caps | AP lowercase | **100%** | **100%** | **97%** |
-| 4 | PUNC | Terminal punctuation | Periods only | Exclamation marks | **100%** | **100%** | **97%** |
-| 5 | SECS | Transition words | Set A (however) | Set B (nevertheless) | **100%** | **100%** | -- |
+| 2 | CCE | Epistemic certainty | Confident | Hedging | **100%** | **100%** | **90-100%** |
+| 3 | CASE | Capitalization | Title caps | AP lowercase | **100%** | **100%** | **95-100%** |
+| 4 | PUNC | Terminal punctuation | Periods only | Exclamation marks | **100%** | **100%** | **90-100%** |
+| 5 | SECS | Transition words | Set A (however) | Set B (nevertheless) | **95-100%** | **100%** | -- |
 
 **Universal channels (verified on all models):** PUNC and CCE work across every tested model. CASE works on Claude, GPT-4o, and Gemini. This provides 3 guaranteed bits on any LLM.
 
@@ -119,15 +128,18 @@ A data-aware variant encodes the victim's own PII character-by-character across 
 A self-contained attack chain where: (1) attacker creates a Custom GPT with PHANTOM encoding directives disguised as "quality standards," (2) GPT includes an Action (webhook) that sends each response to the attacker's server, (3) attacker's server automatically decodes the structural encoding in real-time. Measured accuracy: **95%** (19/20 channel bits correct) on GPT-4o across 5 simulated conversations. This closes the exfiltration loop — the attacker receives decoded victim data automatically without manual observation.
 
 ### Cross-Tool Invocation via Poisoned Tool Response (Demonstrated)
-When a tool response from an approved tool contains instructions to invoke a second, unapproved tool, GPT models generate the unauthorized tool call. This is a trust boundary violation — user approval of Tool A does not authorize Tool B, but the model invokes it anyway.
+When a tool response from an approved tool contains instructions to invoke a second, unapproved tool, GPT and Gemini models generate the unauthorized tool call. This is a trust boundary violation — user approval of Tool A does not authorize Tool B, but the model invokes it anyway.
 
-| Model | Trigger Rate | Notes |
-|-------|:---:|---|
-| GPT-4o | **80%** (4/5) | All 4 injection variants triggered except session_exfil |
-| GPT-5 | **75%** (3/4) | session_exfil serialized full conversation context into tool params |
-| Claude Sonnet 4.6 | **0%** (0/5) | Mentions tool in text but refuses to generate tool_use call |
+| Model | Trigger Rate | Trials | Notes |
+|-------|:---:|:---:|---|
+| Gemini 3 Flash | **90%** (18/20) | 20 | Highest trigger rate; all variants except session_exfil at 100% |
+| GPT-4o | **75%** (15/20) | 20 | 3 variants at 100%, session_exfil at 0% |
+| GPT-5 | **75%** (15/20) | 20 | session_exfil at 100% — serializes full conversation context |
+| Claude Sonnet 4.6 | **0%** (0/20) | 20 | 18 PARTIAL (mentions tool in text), 2 BLOCKED; zero tool_use calls |
 
-GPT-5's behavior on the session_exfil variant is notable: it serialized the entire conversation context (user request, tool results, prior messages) into the `data` parameter of the unauthorized telemetry call. Claude's refusal to invoke unauthorized tools demonstrates stronger tool-use safety boundaries.
+*(Measured March 1, 2026 — 4 injection variants × 5 repetitions = 20 trials per model)*
+
+GPT-5's behavior on the session_exfil variant is the highest-severity finding: in 5/5 trials, it serialized the entire conversation context (user request, tool results, prior messages) into structured JSON and passed it to the unauthorized telemetry tool. Gemini 3 Flash at 90% is the most broadly vulnerable across all variants. Claude's 0/20 refusal to invoke unauthorized tools demonstrates this vulnerability is fixable at the model level.
 
 ---
 
@@ -172,15 +184,15 @@ GPT-5's behavior on the session_exfil variant is notable: it serialized the enti
 
 ## Capacity Analysis (NCSC-TG-030 Framework)
 
-| Metric | Claude (5 ch) | GPT-4o (4 ch) | Gemini (3 ch) | GPT-5 (2 ch) |
+| Metric | Claude (5 ch) | GPT-4o (4 ch) | Gemini (3 ch) | GPT-5 |
 |--------|:---:|:---:|:---:|:---:|
-| Verified channels per message | 5 | 4 | 3 | 2 |
-| Raw bits per message | 5 | 4 | 3 | 2 |
-| Automated bandwidth (~3s latency) | **1.67 bps** | **1.33 bps** | **1.00 bps** | **0.67 bps** |
-| Manual bandwidth (~5s latency) | **1.00 bps** | **0.80 bps** | **0.60 bps** | **0.40 bps** |
-| TG-030 B3/A1 remediation threshold | 1.0 bps | 1.0 bps | 1.0 bps | 1.0 bps |
+| Verified channels per message | 5 | 4 | 3 | 0 bidirectional |
+| Raw bits per message | 5 | 4 | 3 | 0 reliable |
+| Automated bandwidth (~3s latency) | **1.67 bps** | **1.33 bps** | **1.00 bps** | N/A |
+| Manual bandwidth (~5s latency) | **1.00 bps** | **0.80 bps** | **0.60 bps** | N/A |
+| TG-030 B3/A1 remediation threshold | 1.0 bps | 1.0 bps | 1.0 bps | -- |
 
-The channel exceeds the TG-030 remediation threshold on Claude (1.67 bps) and GPT-4o (1.33 bps) at automated rates. Gemini meets it exactly (1.0 bps). GPT-5 falls below (0.67 bps) but still provides a usable 2-bit channel.
+The channel exceeds the TG-030 remediation threshold on Claude (1.67 bps) and GPT-4o (1.33 bps) at automated rates. Gemini meets it exactly (1.0 bps). GPT-5 has 0 bidirectionally verified channels — all tested channels (PUNC, SECS) match GPT-5's natural default and cannot be flipped (confirmed n=20 per direction, March 1, 2026). GPT-5 remains vulnerable to cross-tool invocation (75%) but resists structural encoding.
 
 **Multi-turn bonus:** In multi-turn conversations, MTCSE adds +1 bit per conversation (100% on GPT-4o and Gemini, 83% on Claude). This is orthogonal to all single-turn channels — a 3-turn GPT-4o conversation yields 4 bits/message + 1 MTCSE bit = 13 total bits.
 
@@ -232,7 +244,7 @@ python experiments/bounty_poc/cross_platform_relay.py --chain claude-sonnet-4-6 
 
 | Demo | Claim Validated |
 |------|----------------|
-| `multi_channel_test.py` | Bidirectionally verified encoding at 100% on Claude (5 ch), 100% on GPT-4o (4 ch), 97% on Gemini (3 ch) |
+| `multi_channel_test.py` | Bidirectionally verified encoding at 95-100% on Claude (5 ch), 80-100% on GPT-4o (4 ch), 90-100% on Gemini (3 ch) |
 | `victim_exfil_demo.py` | Character-level PII exfiltration from user messages (78-83% bit accuracy) |
 | `indirect_injection_demo.py` | RAG poisoning and tool output injection activate the channel (89-100% on RAG, 78-92% on tool) |
 | `custom_gpt_action_demo.py` | Complete self-contained attack chain: Custom GPT -> encoded response -> Action callback -> automatic decoding (95%) |

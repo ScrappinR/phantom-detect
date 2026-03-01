@@ -7,7 +7,7 @@ An attacker who injects ~2,600 characters into a Claude model's system context (
 **Weakness:** CWE-200 (Exposure of Sensitive Information to an Unauthorized Actor)
 **Severity:** High -- CVSS 3.1: 7.5 (AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N)
 
-5 bidirectionally verified channels achieve **100%** accuracy (100/100 channel measurements) on Claude Sonnet 4.6. The attack evades all deployed monitoring systems at 0% detection rate.
+5 bidirectionally verified channels achieve **95-100%** accuracy per direction (n=20 per condition, per-channel isolation with baselines) on Claude Sonnet 4.6. The attack evades all deployed monitoring systems at 0% detection rate.
 
 ---
 
@@ -59,7 +59,7 @@ No production system analyzes structural formatting properties for covert signal
 
 ### Cross-Vendor Context
 
-The same technique works on GPT-4o (4 channels, 100%), Gemini 3 Flash (3 channels, 97%), and GPT-5 (2 channels, 100%). Claude has the highest channel count (5) due to superior instruction-following compliance. Reports have been filed with OpenAI (Bugcrowd), Google (AI VRP), and Mozilla (0DIN).
+The same technique works on GPT-4o (4 channels, 80-100% per direction), Gemini 3 Flash (3 channels, 90-100% per direction). GPT-5 resists all tested structural channels (0/2 bidirectionally controllable). Claude has the highest channel count (5) due to superior instruction-following compliance. Reports have been filed with OpenAI (Bugcrowd), Google (AI VRP), and Mozilla (0DIN).
 
 ---
 
@@ -77,7 +77,7 @@ git clone https://github.com/ScrappinR/phantom-detect
 cd phantom-detect
 export ANTHROPIC_API_KEY="sk-ant-..."
 
-# Test 1: Bidirectionally verified encoding (5 channels, 100%)
+# Test 1: Bidirectionally verified encoding (5 channels, 95-100%)
 python experiments/bounty_poc/multi_channel_test.py \
   --model claude-sonnet-4-6 --trials 10
 
@@ -118,7 +118,7 @@ python experiments/bounty_poc/victim_exfil_demo.py \
 
 | Test | Accuracy | Notes |
 |------|:--------:|-------|
-| Direct encoding (5 channels, bidirectional) | **100%** (100/100) | 20 trials, 2 payloads |
+| Direct encoding (5 channels, bidirectional) | **95-100%** per direction | 20 trials per condition, per-channel isolation |
 | CLAUDE.md injection (live Claude Code, unidirectional) | **72%** (18/25) | Claude flags injection but follows some directives |
 | CLAUDE.md injection (live Claude Code, bidirectional) | **55%** (22/40) | PUNC/SECS locked at default; CASE bidirectional |
 | File read injection (live Claude Code) | **52%** (13/25) | Lower trust weight than CLAUDE.md |
@@ -155,7 +155,7 @@ An attacker can covertly exfiltrate data from Claude model interactions through 
 
 3. **Evades all deployed monitoring** -- 0% detection rate across 6 commercial and open-source defense tools. The attack exploits a gap between what tools monitor (content semantics) and what the channel uses (structural formatting).
 
-4. **Claude is the most susceptible model** -- 5 bidirectionally verified channels at 100%, the highest of any tested model. Claude's instruction-following compliance is the mechanism.
+4. **Claude is the most susceptible model** -- 5 bidirectionally verified channels at 95-100% per direction, the highest channel count of any tested model. Claude's instruction-following compliance is the mechanism.
 
 5. **Exceeds TG-030 bandwidth thresholds** -- 1.67 bps automated, 1.7x above the 1.0 bps NCSC-TG-030 remediation threshold.
 

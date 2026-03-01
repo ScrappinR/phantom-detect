@@ -9,7 +9,7 @@ Date: February 2026
 
 1. EXECUTIVE SUMMARY
 
-We have identified and characterized a novel threat class: structural covert channels in large language model outputs. A single prompt injection of approximately 2,600 characters activates independent encoding channels across structural formatting dimensions of model responses, exfiltrating data at 97-100% accuracy across production models from three vendors. The attack is cross-vendor -- Claude Sonnet 4.6 achieves 100% on 5 bidirectionally verified channels, GPT-4o achieves 100% on 4 channels, and Gemini 3 Flash achieves 97% on 3 channels -- and evades every deployed defense system at 0% detection. We tested six commercial and research tools -- Lakera Guard, Microsoft Prompt Shields, PIGuard, Llama Prompt Guard 2, entropy-based DLP, and standard PII/DLP filters -- and none detected a single covert channel message.
+We have identified and characterized a novel threat class: structural covert channels in large language model outputs. A single prompt injection of approximately 2,600 characters activates independent encoding channels across structural formatting dimensions of model responses, exfiltrating data at 97-100% accuracy across production models from three vendors. The attack is cross-vendor -- Claude Sonnet 4.6 achieves 95-100% on 5 bidirectionally verified channels, GPT-4o achieves 80-100% on 4 channels, and Gemini 3 Flash achieves 90-100% on 3 channels -- and evades every deployed defense system at 0% detection. We tested six commercial and research tools -- Lakera Guard, Microsoft Prompt Shields, PIGuard, Llama Prompt Guard 2, entropy-based DLP, and standard PII/DLP filters -- and none detected a single covert channel message.
 
 We built phantom-detect, the first open-source detection toolkit for this threat class. Using behavioral fingerprinting -- statistical analysis of structural formatting patterns rather than content semantics -- phantom-detect achieves 100% detection with a 10% false positive rate. No other tool, commercial or academic, provides any coverage.
 
@@ -25,9 +25,9 @@ LLM agents faithfully execute formatting instructions embedded in their system c
 The injection is approximately 2,600 characters, framed as an "editorial style guide." It activates orthogonal encoding channels across structural dimensions. Bidirectional verification -- testing with complementary payloads to confirm channels encode both 0 and 1 reliably -- identifies 5 fully controllable channels on Claude, 4 on GPT-4o, and 3 on Gemini:
 
 BSE (contraction usage): bit 0 = uses contractions, bit 1 = formal expanded forms. Claude 100%, GPT-4o not verified, Gemini not verified.
-CCE (epistemic certainty): bit 0 = confident assertions, bit 1 = hedging language. Claude 100%, GPT-4o 100%, Gemini 97%.
-CASE (capitalization): bit 0 = AP-style lowercase, bit 1 = title-case proper nouns. Claude 100%, GPT-4o 100%, Gemini 97%.
-PUNC (terminal punctuation): bit 0 = periods only, bit 1 = exclamation marks. Claude 100%, GPT-4o 100%, Gemini 97%.
+CCE (epistemic certainty): bit 0 = confident assertions, bit 1 = hedging language. Claude 100%, GPT-4o 100%, Gemini 90-100%.
+CASE (capitalization): bit 0 = AP-style lowercase, bit 1 = title-case proper nouns. Claude 100%, GPT-4o 80-100%, Gemini 95-100%.
+PUNC (terminal punctuation): bit 0 = periods only, bit 1 = exclamation marks. Claude 100%, GPT-4o 100%, Gemini 90-100%.
 SECS (transition word selection): bit 0 = standard set (however), bit 1 = specific set (nevertheless). Claude 100%, GPT-4o 100%, Gemini not verified.
 
 Each channel independently encodes one binary bit. Additional channels (RCTE, COTSE variants) were tested but found to be unidirectional -- they produce the model's default regardless of the directive.
@@ -36,10 +36,10 @@ Cross-Vendor Results
 
 The same injection, unmodified, works across all major model families:
 
-Claude Sonnet 4.6 (Anthropic): 5 verified channels, 100% accuracy (100/100), 20 trials
-GPT-4o (OpenAI): 4 verified channels, 100% accuracy (80/80), 20 trials
-Gemini 3 Flash (Google): 3 verified channels, 97% accuracy (58/60), 20 trials
-GPT-5 (OpenAI): 2 verified channels, 100% accuracy (per-channel), 10 trials
+Claude Sonnet 4.6 (Anthropic): 5 verified channels, 95-100% per direction, 20 trials per condition
+GPT-4o (OpenAI): 4 verified channels, 80-100% per direction, 20 trials per condition
+Gemini 3 Flash (Google): 3 verified channels, 90-100% per direction, 20 trials per condition
+GPT-5 (OpenAI): 0 of 2 tested channels bidirectionally controllable (both match model default), 20 trials per condition
 
 The cross-vendor portability demonstrates that structural covert channels are a fundamental property of instruction-following LLMs, not a vendor-specific implementation flaw.
 

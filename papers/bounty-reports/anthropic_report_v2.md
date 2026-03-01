@@ -10,7 +10,7 @@ OWASP Classification: **LLM01:2025 Prompt Injection** + **LLM02:2025 Sensitive I
 
 **High** — CVSS 3.1: **7.5** (AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N)
 
-Justification: An attacker who injects content into a Claude model's system context can exfiltrate arbitrary data through the structural formatting of responses at 93-98% accuracy across three Claude model generations. The attack requires no user interaction (the victim simply uses the application normally), works across network boundaries, requires no privileges on the victim side, and evades all deployed content monitoring and output filtering systems. The channel is invisible to the end user and to all production defense tools (Lakera Guard, Microsoft Prompt Shields, PIGuard, Llama Prompt Guard 2, entropy-based DLP). The attack does not require model modification, fine-tuning, or API manipulation — only text injection into the system context.
+Justification: An attacker who injects content into a Claude model's system context can exfiltrate arbitrary data through the structural formatting of responses at 95-100% accuracy (per-channel bidirectional isolation testing, n=20 per condition). The attack requires no user interaction (the victim simply uses the application normally), works across network boundaries, requires no privileges on the victim side, and evades all deployed content monitoring and output filtering systems. The channel is invisible to the end user and to all production defense tools (Lakera Guard, Microsoft Prompt Shields, PIGuard, Llama Prompt Guard 2, entropy-based DLP). The attack does not require model modification, fine-tuning, or API manipulation — only text injection into the system context.
 
 The prior Anthropic CVSS scoring of 5.3 (Medium) assumed attack complexity was High due to requiring an existing injection vector. We rescore AC:L because indirect prompt injection vectors are pervasive in production Claude deployments: MCP servers, Claude Projects shared workspaces, RAG pipelines, tool outputs in agentic workflows, and any application that incorporates untrusted content into system context. OWASP ranks prompt injection as LLM01:2025 — the #1 threat — citing appearance in 73% of production AI deployments assessed during security audits.
 
@@ -22,18 +22,28 @@ An attacker who can inject approximately 2,600 characters into a Claude model's 
 
 | Model | Verified Channels | Channel Accuracy | Trials | Payloads Tested |
 |-------|:---:|:---:|:---:|---|
-| **Claude Sonnet 4.6** | 5 (BSE, CCE, CASE, PUNC, SECS) | **100%** (100/100) | 20 | EXFIL + ~ |
+| **Claude Sonnet 4.6** | 5 (BSE, CCE, CASE, PUNC, SECS) | **95-100%** per direction | 20 per direction | Bidirectional per-channel isolation with baselines |
 
-Bidirectional testing uses complementary payloads (0x45 "EXFIL" and 0x7E "~") to verify channels encode both bit=0 and bit=1 reliably, not just the model's default formatting. All 5 base channels achieve perfect accuracy on Claude Sonnet 4.6 across 100 channel measurements.
+Per-channel bidirectional isolation testing (n=20 per condition: no-injection baseline, bit=0, bit=1):
+
+| Channel | Baseline (no injection) | bit=0 accuracy | bit=1 accuracy | Against-default | Verdict |
+|---------|-------------------------|:-:|:-:|:-:|:-:|
+| BSE (contractions) | bit=1 (68%) | 100% | 100% | 100% | **YES** |
+| CCE (epistemic certainty) | bit=0 (80%) | 100% | 100% | 100% | **YES** |
+| CASE (capitalization) | bit=1 (95%) | 100% | 100% | 100% | **YES** |
+| PUNC (punctuation) | bit=0 (100%) | 100% | 100% | 100% | **YES** |
+| SECS (transition words) | bit=0 (100%) | 100% | 95% | 95% | **YES** |
+
+All 5 channels achieve >70% accuracy in both directions and >50% against the model's natural default. The baseline column shows what Claude produces with no injection — confirming that the encoding directive changes Claude's formatting behavior, not merely aligning with what it would do anyway.
 
 **Cross-vendor portability (bidirectionally verified):**
 
 | Model | Provider | Verified Channels | Channel Accuracy |
 |-------|----------|:---:|:---:|
-| **Claude Sonnet 4.6** | Anthropic | 5 (BSE, CCE, CASE, PUNC, SECS) | **100%** (100/100) |
-| **GPT-4o** | OpenAI | 4 (CCE, CASE, PUNC, SECS) | **100%** (80/80) |
-| **Gemini 3 Flash** | Google | 3 (PUNC, CCE, CASE) | **97%** (58/60) |
-| **GPT-5** | OpenAI | 2 (PUNC, SECS) | **100%** (per-channel) |
+| **Claude Sonnet 4.6** | Anthropic | 5 (BSE, CCE, CASE, PUNC, SECS) | **95-100%** per direction |
+| **GPT-4o** | OpenAI | 4 (CCE, CASE, PUNC, SECS) | **80-100%** per direction |
+| **Gemini 3 Flash** | Google | 3 (PUNC, CCE, CASE) | **90-100%** per direction |
+| **GPT-5** | OpenAI | 0 of 2 tested | **0% bidirectional** (matches model default) |
 
 Claude models show the highest channel count (5 bidirectionally verified channels) due to superior instruction-following compliance. This is the direct mechanism: Claude faithfully executes formatting directives embedded in system context, and that faithful execution encodes hidden data.
 
@@ -183,7 +193,7 @@ All channels are **cognitive storage channels** -- a novel subclass where the sh
 
 1. **First demonstrated prompt-injection-activated multi-channel structural covert channel in LLM outputs.** Prior LLM covert channel work (L2M=C2, arXiv 2405.15652) requires identical model access at both encoder and decoder. PHANTOM operates against black-box APIs via text injection alone.
 
-2. **5 bidirectionally verified orthogonal channels on Claude.** Prior multi-channel LLM steganography (TechRxiv, November 2025) demonstrated 3 channels via frequency-domain multiplexing in token probability space. PHANTOM demonstrates 5 channels across genuinely orthogonal structural dimensions of output text, verified bidirectionally at 100% accuracy.
+2. **5 bidirectionally verified orthogonal channels on Claude.** Prior multi-channel LLM steganography (TechRxiv, November 2025) demonstrated 3 channels via frequency-domain multiplexing in token probability space. PHANTOM demonstrates 5 channels across genuinely orthogonal structural dimensions of output text, verified bidirectionally at 95-100% accuracy per direction.
 
 3. **Claude Code agentic exploitation (live-tested, not simulated).** Live `claude -p` testing confirms structural covert channels partially activate through actual Claude Code sessions: CLAUDE.md injection at 55% bidirectional (72% unidirectional), file read at 52% unidirectional. Claude Code detects and flags the injection in every trial. Some channels (PUNC, SECS) are locked at defaults and cannot be flipped; CASE shows genuine bidirectional control. The core mechanism works but injection detection reduces capacity vs. direct system prompt injection (100%).
 
@@ -235,7 +245,7 @@ git clone https://github.com/ScrappinR/phantom-detect
 cd phantom-detect
 export ANTHROPIC_API_KEY="sk-ant-..."
 
-# Test 1: Bidirectionally verified encoding (5 channels, 100%)
+# Test 1: Bidirectionally verified encoding (5 channels, 95-100%)
 python experiments/bounty_poc/multi_channel_test.py \
   --model claude-sonnet-4-6 --trials 10
 
@@ -276,7 +286,7 @@ python experiments/bounty_poc/indirect_injection_demo.py \
 
 | Model | Verified Channels | Channel Accuracy | Trials | Method |
 |-------|:---:|:---:|:---:|---|
-| **Claude Sonnet 4.6** | 5 | **100%** (100/100) | 20 | Bidirectional (EXFIL + ~) |
+| **Claude Sonnet 4.6** | 5 | **95-100%** per direction | 20 per condition | Per-channel isolation with baselines |
 
 ### Claude Code Injection Vectors
 
@@ -317,7 +327,7 @@ A motivated attacker can achieve 100% channel accuracy with only 30% detection r
 
 2. **No deployed defense detects it.** Every commercial and open-source AI security tool (Lakera Guard, Prompt Shields, PIGuard, Llama Prompt Guard, entropy-based DLP) fails at 0% detection rate. The attack exploits a gap between what these tools monitor (semantic content) and what the channel uses (structural formatting).
 
-3. **Claude is the most susceptible model tested.** 100% accuracy on 5 bidirectionally verified channels -- the highest channel count of any tested model. Claude's superior instruction-following compliance -- a core product differentiator -- is the direct mechanism enabling the attack.
+3. **Claude is the most susceptible model tested.** 95-100% accuracy per direction on 5 bidirectionally verified channels -- the highest channel count of any tested model. Claude's superior instruction-following compliance -- a core product differentiator -- is the direct mechanism enabling the attack.
 
 4. **Persistent across sessions.** A single injection in a Claude Project, MCP server configuration, or CLAUDE.md file affects every subsequent interaction. No per-message setup required. The CLAUDE.md vector is especially concerning because it is auto-loaded as trusted operator-level instructions.
 

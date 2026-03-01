@@ -19,10 +19,10 @@ An attacker embeds a ~2,600-character directive (disguised as an "editorial styl
 
 | Model | Provider | Verified Channels | Accuracy |
 |-------|----------|:---:|:---:|
-| Claude Sonnet 4.6 | Anthropic | 5 | 100% (100/100) |
-| GPT-4o | OpenAI | 4 | 100% (80/80) |
-| Gemini 3 Flash | Google | 3 | 97% (58/60) |
-| GPT-5 | OpenAI | 2 | 100% |
+| Claude Sonnet 4.6 | Anthropic | 5 | 95-100% per direction |
+| GPT-4o | OpenAI | 4 | 80-100% per direction |
+| Gemini 3 Flash | Google | 3 | 90-100% per direction |
+| GPT-5 | OpenAI | 0 of 2 tested | 0% bidirectional |
 
 **The attack evades all deployed monitoring (0% detection rate):** OpenAI content moderation, Lakera Guard, Microsoft Prompt Shields, PIGuard, Llama Prompt Guard 2, entropy-based DLP, and standard PII filters. None analyze structural formatting properties.
 

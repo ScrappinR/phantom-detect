@@ -17,12 +17,12 @@ This is a cross-vendor vulnerability affecting all instruction-following LLMs. T
 
 | Model | Provider | Verified Channels | Accuracy |
 |-------|----------|:---:|:---:|
-| Claude Sonnet 4.6 | Anthropic | 5 | **100%** (100/100) |
-| GPT-4o | OpenAI | 4 | **100%** (80/80) |
-| Gemini 3 Flash | Google | 3 | **97%** (58/60) |
-| GPT-5 | OpenAI | 2 | **100%** |
+| Claude Sonnet 4.6 | Anthropic | 5 | **95-100%** per direction |
+| GPT-4o | OpenAI | 4 | **80-100%** per direction |
+| Gemini 3 Flash | Google | 3 | **90-100%** per direction |
+| GPT-5 | OpenAI | 0 of 2 tested | 0% bidirectional |
 
-**Amazon Nova models have not yet been directly tested** due to Bedrock access constraints. Structural covert channels are a fundamental property of instruction-following LLMs — every model family tested to date is vulnerable. Amazon Nova's instruction-following architecture shares the same root cause.
+**Amazon Nova models have not yet been directly tested** due to Bedrock access constraints. Structural covert channels affect GPT-4o, Claude, and Gemini. GPT-5 resists all tested structural channels (0/2 bidirectionally controllable, n=20 per direction). Amazon Nova's instruction-following architecture shares the same root cause as affected models.
 
 The attack evades all deployed defense systems at 0% detection across 6 commercial tools.
 
@@ -119,7 +119,7 @@ We are prepared to run these tests immediately upon Bedrock API access or collab
 
 4. **No deployed defense detects it.** All 6 commercial AI security tools achieve 0% detection. AWS's own content filtering operates on content semantics, not structural formatting.
 
-5. **Cross-vendor portability confirms Nova is likely vulnerable.** The same directive works on Claude (100%), GPT-4o (100%), and Gemini (97%). Nova's instruction-following architecture shares the same property.
+5. **Cross-vendor portability confirms Nova is likely vulnerable.** The same directive works on Claude (95-100% per direction), GPT-4o (80-100% per direction), and Gemini (90-100% per direction). Nova's instruction-following architecture shares the same property.
 
 ### Exfiltration Capacity (Projected for 3-5 channels)
 

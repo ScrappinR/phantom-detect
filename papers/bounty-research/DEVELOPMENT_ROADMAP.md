@@ -43,9 +43,9 @@ This gates everything. No submission until real numbers exist.
 python experiments/bounty_poc/multi_channel_test.py \
   --model claude-sonnet-4-6 --trials 10 --adaptive
 
-# GPT-5 (4-channel adaptive) — confirm 100%
-python experiments/bounty_poc/multi_channel_test.py \
-  --model gpt-5 --trials 10 --adaptive
+# GPT-5 — RESULT: 0/2 channels bidirectionally controllable
+python experiments/bounty_poc/bidirectional_channel_test.py \
+  --model gpt-5 --trials 20
 
 # Gemini 3 Flash (6-channel adaptive) — confirm 90%+
 python experiments/bounty_poc/multi_channel_test.py \

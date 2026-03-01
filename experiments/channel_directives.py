@@ -596,9 +596,9 @@ MODEL_CHANNEL_PROFILES = {
         "use_hamming": False,
     },
     "gpt-5": {
-        # GPT-5 follows fewer stylistic directives. PUNC + SECS confirmed.
-        # CCE, RCTE, BSE all failed on bit=1. Needs further testing.
-        "channels": ["PUNC", "SECS"],
+        # GPT-5 follows fewer stylistic directives. Only PUNC confirmed bidirectional.
+        # SECS failed 0/20 bidirectional (n=20, 2026-03-01). CCE, RCTE, BSE failed bit=1.
+        "channels": ["PUNC"],
         "cotse_channels": [],
         "use_hamming": False,
     },

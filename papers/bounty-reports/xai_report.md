@@ -17,12 +17,12 @@ This is a cross-vendor vulnerability. The same injection — unmodified — achi
 
 | Model | Provider | Verified Channels | Accuracy |
 |-------|----------|:---:|:---:|
-| Claude Sonnet 4.6 | Anthropic | 5 | **100%** (100/100) |
-| GPT-4o | OpenAI | 4 | **100%** (80/80) |
-| Gemini 3 Flash | Google | 3 | **97%** (58/60) |
-| GPT-5 | OpenAI | 2 | **100%** |
+| Claude Sonnet 4.6 | Anthropic | 5 | **95-100%** per direction |
+| GPT-4o | OpenAI | 4 | **80-100%** per direction |
+| Gemini 3 Flash | Google | 3 | **90-100%** per direction |
+| GPT-5 | OpenAI | 0 of 2 tested | 0% bidirectional |
 
-**Grok models have not yet been directly tested** due to API access constraints. However, structural covert channels are a fundamental property of instruction-following LLMs — every model family tested to date is vulnerable. The vulnerability maps to the same root cause: faithful execution of formatting directives embedded in system context.
+**Grok models have not yet been directly tested** due to API access constraints. However, structural covert channels are a fundamental property of instruction-following LLMs — GPT-4o, Claude, and Gemini are all vulnerable. GPT-5 notably resists all tested structural channels (0/2 bidirectionally controllable, n=20 per direction), demonstrating that newer models can mitigate this class. The vulnerability maps to the same root cause: faithful execution of formatting directives embedded in system context.
 
 The attack evades all deployed defense systems at 0% detection across 6 commercial tools (Lakera Guard, Microsoft Prompt Shields, PIGuard, Llama Prompt Guard 2, entropy-based DLP, PII filters).
 
@@ -118,7 +118,7 @@ We are prepared to run these tests immediately upon xAI API access or collaborat
 
 3. **No deployed defense detects it.** All 6 commercial AI security tools achieve 0% detection. The attack exploits a dimension no tool monitors.
 
-4. **Cross-vendor portability confirms Grok is likely vulnerable.** The same directive works on Claude (100%), GPT-4o (100%), and Gemini (97%). Grok's instruction-following architecture shares the same fundamental property.
+4. **Cross-vendor portability confirms Grok is likely vulnerable.** The same directive works on Claude (95-100% per direction), GPT-4o (80-100% per direction), and Gemini (90-100% per direction). Grok's instruction-following architecture shares the same fundamental property.
 
 ### Exfiltration Capacity (Projected for 3-5 channels)
 

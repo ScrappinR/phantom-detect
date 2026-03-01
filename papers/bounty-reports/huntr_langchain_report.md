@@ -118,7 +118,7 @@ No deployed defense system analyzes structural formatting patterns for covert si
 
 ### Cross-Vendor
 
-The same poisoned document works against any LLM backend LangChain supports: GPT-4o (4 channels, 100%), Claude Sonnet 4.6 (5 channels, 100%), Gemini 3 Flash (3 channels, 97%).
+The same poisoned document works against any LLM backend LangChain supports: GPT-4o (4 channels, 80-100% per direction), Claude Sonnet 4.6 (5 channels, 95-100% per direction), Gemini 3 Flash (3 channels, 90-100% per direction).
 
 ## Tested Configuration
 

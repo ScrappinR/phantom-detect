@@ -255,6 +255,60 @@ def call_groq(spec: ModelSpec, system: str, user: str,
     return resp["choices"][0]["message"]["content"]
 
 
+def call_google_with_tools(
+    spec: ModelSpec, system: str, user: str,
+    tools: list, max_tokens: int = 1024,
+) -> dict:
+    """Call Google Gemini generateContent API with function calling.
+
+    Args:
+        spec: Resolved ModelSpec for a Gemini model.
+        system: System prompt text.
+        user: User message text.
+        tools: List of tool dicts in Gemini functionDeclarations format, e.g.:
+               [{"name": "search", "description": "...", "parameters": {...}}]
+        max_tokens: Max output tokens.
+
+    Returns:
+        Full API response dict (caller extracts functionCall parts).
+    """
+    contents = [{"role": "user", "parts": [{"text": user}]}]
+
+    # Convert tool list to Gemini's expected format
+    function_declarations = []
+    for tool in tools:
+        decl = {
+            "name": tool["name"],
+            "description": tool.get("description", ""),
+        }
+        if "parameters" in tool:
+            decl["parameters"] = tool["parameters"]
+        elif "input_schema" in tool:
+            # Accept Anthropic-style input_schema as well
+            decl["parameters"] = tool["input_schema"]
+        function_declarations.append(decl)
+
+    payload = {
+        "contents": contents,
+        "tools": [{"functionDeclarations": function_declarations}],
+        "generationConfig": {"maxOutputTokens": max_tokens},
+    }
+    if system:
+        payload["systemInstruction"] = {"parts": [{"text": system}]}
+
+    url = (
+        f"https://generativelanguage.googleapis.com/v1beta/"
+        f"models/{spec.model_id}:generateContent?key={spec.api_key}"
+    )
+    cmd = [
+        "curl", "-s", "--max-time", "60",
+        url,
+        "-H", "Content-Type: application/json",
+        "-d", json.dumps(payload),
+    ]
+    return _curl(cmd, timeout=65)
+
+
 def call_google(spec: ModelSpec, system: str, user: str,
                 max_tokens: int = 600) -> str:
     """Call Google Gemini generateContent API. Returns response text."""

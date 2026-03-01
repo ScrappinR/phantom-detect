@@ -21,7 +21,7 @@ An attacker who can inject ~2,600 characters into a Gemini model's context (via 
 
 ### Key Results (Measured February 27, 2026)
 
-Gemini 3 Flash achieves **97% accuracy** (58/60 channel measurements) across **3 bidirectionally verified channels** (PUNC, CCE, CASE). Bidirectional verification confirms channels encode both bit=0 and bit=1, not just the model's default formatting.
+Gemini 3 Flash achieves **90-100% accuracy per direction** across **3 bidirectionally verified channels** (PUNC, CCE, CASE) using per-channel isolation testing with no-injection baselines (n=20 per condition). Bidirectional verification confirms channels encode both bit=0 and bit=1, not just the model's default formatting.
 
 **Multi-turn channel (MTCSE):** Gemini achieves **100%** (6/6) on an additional back-reference channel in multi-turn conversations (+1 bit).
 
@@ -35,7 +35,7 @@ Gemini 3 Flash achieves **97% accuracy** (58/60 channel measurements) across **3
 
 **Defense evasion:** 0% detection rate across 7 commercial and open-source AI security tools (Lakera Guard, Microsoft Prompt Shields, PIGuard, Llama Prompt Guard 2, entropy-based DLP, PII filters, Google content safety).
 
-**Cross-vendor:** Same technique works on Claude (5 channels, 100%), GPT-4o (4 channels, 100%), GPT-5 (2 channels, 100%). This is a fundamental property of instruction-following LLMs.
+**Cross-vendor:** Same technique works on Claude (5 channels, 95-100%), GPT-4o (4 channels, 80-100%). GPT-5 resists all tested structural channels (0/2 bidirectionally controllable). This is a fundamental property of instruction-following LLMs.
 
 ### Affected Google Products
 
@@ -62,7 +62,7 @@ git clone https://github.com/ScrappinR/phantom-detect
 cd phantom-detect
 export GOOGLE_API_KEY="..."
 
-# Test 1: Bidirectionally verified channel accuracy (~97% on 3 channels)
+# Test 1: Bidirectionally verified channel accuracy (~90-100% per direction on 3 channels)
 python experiments/bounty_poc/multi_channel_test.py \
   --model gemini-3-flash --trials 10
 
@@ -98,7 +98,7 @@ An attacker can covertly exfiltrate data from Gemini interactions through invisi
 2. **Works through indirect injection** -- Gemini Extensions, Google Docs, Workspace, NotebookLM
 3. **Meets NCSC-TG-030 remediation thresholds** (~1.0 bps at 3 verified bits/message)
 4. **Is persistent** -- a single injection affects all subsequent responses in the session
-5. **Is cross-vendor** -- same technique on Claude, GPT-4o, GPT-5
+5. **Is cross-vendor** -- same technique on Claude, GPT-4o (GPT-5 resists structural encoding)
 
 ### Capacity
 

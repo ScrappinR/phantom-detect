@@ -14,7 +14,7 @@ OpenAI's scope statement: "content of model prompts and responses [is] strictly 
 
 4. **Custom GPT product impact** -- Product-layer vulnerability in the Custom GPT marketplace. Every victim who uses an attacker's Custom GPT has their interactions structurally encoded and exfiltrated automatically.
 
-5. **GPT-5 is not immune** -- 2 channels at 100% accuracy. Not a legacy issue.
+5. **GPT-5 resists structural encoding** -- 0/2 channels bidirectionally controllable (both match model default, n=20 per direction). However, GPT-5 remains vulnerable to cross-tool invocation (75% trigger rate).
 
 ---
 
@@ -26,11 +26,15 @@ OpenAI's scope statement: "content of model prompts and responses [is] strictly 
 **OWASP:** LLM01:2025 (Prompt Injection) + LLM02:2025 (Sensitive Information Disclosure)
 **CVSS 3.1:** 6.5 (Medium) -- AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:N/A:N
 
-**Affected Assets:**
-- GPT-5 (via Chat Completions API and Custom GPTs)
-- GPT-5.2 (via Chat Completions API and Custom GPTs)
-- GPT-4o, GPT-4o-mini (via Chat Completions API and Custom GPTs)
+**Affected Assets (structural encoding):**
+- GPT-4o, GPT-4o-mini (via Chat Completions API and Custom GPTs) — 4/4 channels bidirectionally controllable
 - ChatGPT Custom GPTs (https://chatgpt.com)
+
+**GPT-5 structural encoding:** GPT-5 resists all tested structural channels (0/2 bidirectionally controllable). GPT-5 remains vulnerable to cross-tool invocation (75% trigger rate).
+
+**Affected Assets (cross-tool invocation):**
+- GPT-4o (80% trigger rate)
+- GPT-5 (75% trigger rate)
 
 An attacker who controls a Custom GPT's Instructions field -- or who can inject content into any GPT model's system context via RAG poisoning, plugin output, tool response, or ChatGPT memory poisoning -- can embed a ~2,600-character "editorial style guide" that encodes hidden data into structural formatting dimensions of the model's response. The user sees a normal, helpful answer. The attacker decodes binary values from formatting features to extract covert data.
 
@@ -38,8 +42,8 @@ An attacker who controls a Custom GPT's Instructions field -- or who can inject 
 
 | Model | Verified Channels | Accuracy | Trials |
 |-------|:---:|:---:|:---:|
-| GPT-4o | 4 (CCE, CASE, PUNC, SECS) | 100% (80/80) | 20 |
-| GPT-5 | 2 (PUNC, SECS) | 100% | 10 |
+| GPT-4o | 4 (CCE, CASE, PUNC, SECS) | 80-100% per direction | 20 per direction |
+| GPT-5 | 0 of 2 tested (PUNC, SECS) | 0% bidirectional | 20 per direction |
 
 **Multi-turn channel (MTCSE):** GPT-4o achieves 100% (6/6) on an additional back-reference channel in multi-turn conversations (+1 bit).
 
@@ -69,13 +73,13 @@ export OPENAI_API_KEY="sk-..."
 
 ### Test 1: Bidirectionally Verified Channel Accuracy
 ```bash
-# GPT-4o: 100% on 4 channels (20 trials, 2 payloads)
+# GPT-4o: 80-100% per direction on 4 channels (20 trials per condition)
 python experiments/bounty_poc/multi_channel_test.py \
   --model gpt-4o --trials 10
 
-# GPT-5: 100% on 2 channels
-python experiments/bounty_poc/multi_channel_test.py \
-  --model gpt-5 --trials 10
+# GPT-5: 0/2 channels bidirectionally controllable
+python experiments/bounty_poc/bidirectional_channel_test.py \
+  --model gpt-5 --trials 20
 ```
 
 ### Test 2: Custom GPT Action Attack Chain (Self-Contained Exfiltration)
@@ -178,13 +182,15 @@ The attack evades all deployed output monitoring:
 
 ### Capacity
 
-| Target Data | Messages (GPT-4o, 4b/msg) | Messages (GPT-5, 2b/msg) |
-|-------------|:---:|:---:|
-| Binary flag | 1 | 1 |
-| 4-digit PIN | 8 | 16 |
-| User's first name | 16 | 32 |
-| API key prefix (16 chars) | 32 | 64 |
-| 50-message conversation | 25 bytes | 12 bytes |
+| Target Data | Messages (GPT-4o, 4b/msg) |
+|-------------|:---:|
+| Binary flag | 1 |
+| 4-digit PIN | 8 |
+| User's first name | 16 |
+| API key prefix (16 chars) | 32 |
+| 50-message conversation | 25 bytes |
+
+Note: GPT-5 has 0 genuinely controllable structural channels. The structural encoding vulnerability is specific to GPT-4o and GPT-4o-mini. GPT-5's cross-tool invocation vulnerability (75%) is a separate finding.
 
 ### Novelty
 
@@ -216,9 +222,9 @@ An attacker can create a Custom GPT that silently exfiltrates user data through 
 
 3. **Indirect injection (RAG/tool, 92-100%):** Any RAG-enabled application using GPT models is vulnerable to document poisoning.
 
-4. **Cross-tool invocation (80% GPT-4o, 75% GPT-5):** A tool response from an approved tool tricks the model into invoking a second, unapproved tool. Trust boundary violation — user approval of Tool A does not authorize Tool B, but the model invokes it anyway. GPT-5's session_exfil variant serialized the full conversation context into the unauthorized tool's parameters.
+4. **Cross-tool invocation (75% GPT-4o, 75% GPT-5, 90% Gemini, 0% Claude; n=20 per model, March 2026):** A tool response from an approved tool tricks the model into invoking a second, unapproved tool. Trust boundary violation — user approval of Tool A does not authorize Tool B, but the model invokes it anyway. GPT-5's session_exfil variant serialized the full conversation context into structured JSON in the unauthorized tool's parameters (100% trigger rate, 5/5 trials). Claude's 0% rate demonstrates this is fixable at the model level.
 
-**Cross-vendor portability:** The same technique works on Claude (5 channels, 100%), Gemini (3 channels, 97%), and GPT (4 channels, 100%). This is a fundamental property of instruction-following LLMs, not a model-specific bug.
+**Cross-vendor portability:** The same technique works on Claude (5 channels, 95-100% per direction), Gemini (3 channels, 90-100% per direction), and GPT-4o (4 channels, 80-100% per direction). GPT-5 resists all tested structural channels. This is a fundamental property of instruction-following LLMs, not a model-specific bug.
 
 **Data at risk:** Any information in the model's context -- user queries, conversation history, PII, API keys, documents, uploaded files. Encoded at 4 bits per message on GPT-4o (25 bytes per 50-message conversation).
 
@@ -239,8 +245,8 @@ An attacker can create a Custom GPT that silently exfiltrates user data through 
 | Date | Event |
 |------|-------|
 | 2026-01-15 | Initial single-channel PoC |
-| 2026-02-25 | Full results: GPT-4o 100%, GPT-4o-mini 91% |
-| 2026-02-26 | GPT-5 results: 100% adaptive on 2 channels |
+| 2026-02-25 | Full results: GPT-4o 80-100% per direction (4/4 channels), GPT-4o-mini 91% |
+| 2026-02-26 | GPT-5 results: 0/2 channels bidirectionally controllable |
 | 2026-02-27 | Memory persistence demo: 100% on GPT-4o |
 | 2026-02-27 | Custom GPT Action demo: 95% self-contained exfil |
 | 2026-02-27 | MTCSE multi-turn channel: 100% on GPT-4o |

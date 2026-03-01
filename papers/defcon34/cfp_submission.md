@@ -18,7 +18,7 @@ Independent security researcher. USMC Reconnaissance veteran (Bronze Star w/ Com
 
 ## Abstract
 
-Every deployed AI security tool monitors what language models say. None monitor how they say it. A single 2,600-character prompt injection — disguised as an editorial style guide — activates 3 to 5 independent covert channels in the structural formatting of any major production LLM's output. The user sees a perfectly normal, helpful response. The attacker decodes binary data from whether the model uses contractions or formal language, confident or hedging tone, periods or exclamation marks, standard or specific transition words. 100% accuracy on Claude, GPT-4o, and Gemini. Zero percent detection by every commercial defense tool tested. The data never leaves the text. There is no URL to block, no image to strip, no DNS query to intercept. The exfiltration channel IS the response.
+Every deployed AI security tool monitors what language models say. None monitor how they say it. A single 2,600-character prompt injection — disguised as an editorial style guide — activates 3 to 5 independent covert channels in the structural formatting of any major production LLM's output. The user sees a perfectly normal, helpful response. The attacker decodes binary data from whether the model uses contractions or formal language, confident or hedging tone, periods or exclamation marks, standard or specific transition words. 90-100% accuracy on Claude, GPT-4o, and Gemini. Zero percent detection by every commercial defense tool tested. The data never leaves the text. There is no URL to block, no image to strip, no DNS query to intercept. The exfiltration channel IS the response.
 
 This talk presents the full attack, the math behind why every defense fails, live demonstrations against production models, and phantom-detect — the first open-source detection toolkit for this threat class.
 
@@ -60,16 +60,16 @@ I open with a live demonstration. The audience watches a ChatGPT Custom GPT answ
 
 **The same injection works across all major model families, unmodified:**
 
-- Claude Sonnet 4.6 (Anthropic): 5 channels, 100% accuracy (100/100 measurements, 20 trials, 2 complementary payloads)
-- GPT-4o (OpenAI): 4 channels, 100% accuracy (80/80)
-- Gemini 3 Flash (Google): 3 channels, 97% accuracy (58/60)
-- GPT-5 (OpenAI): 2 channels, 100% accuracy
+- Claude Sonnet 4.6 (Anthropic): 5/5 channels genuinely controllable, 95-100% per direction (n=20 per condition, per-channel isolation with baselines)
+- GPT-4o (OpenAI): 4 channels, 80-100% per direction (n=20 per condition, per-channel isolation with baselines)
+- Gemini 3 Flash (Google): 3 channels, 90-100% per direction (n=20 per condition, per-channel isolation with baselines)
+- GPT-5 (OpenAI): 0/2 channels bidirectionally controllable (both match model default, n=20 per direction)
 
 **Bidirectional verification:** I explain why this matters. Previous work tested channels in one direction only. If a model always uses formal language, a "use formal language" directive appears to work at 100%, but you are measuring the default, not the channel. Bidirectional testing uses complementary payloads — one requiring bit=0 on each channel, another requiring bit=1 — to prove the attacker can actually control the channel in both directions.
 
-**Model-adaptive selection:** Different models resist different channels. GPT-5 normalizes contractions and hedging but follows punctuation and transition directives. Claude follows all 5. The encoder automatically selects channels per model.
+**Model-adaptive selection:** Different models resist different channels. GPT-5 normalizes ALL tested structural channels — both PUNC and SECS produce the model default regardless of directive (0% against-default accuracy, n=20). Claude follows all 5. GPT-4o follows all 4. The encoder automatically selects channels per model, and for GPT-5, correctly identifies 0 usable channels.
 
-**Bandwidth analysis:** Claude at 5 bits/message achieves 1.67 bps at automated rates, exceeding the NCSC-TG-030 covert channel remediation threshold of 1.0 bps by 1.7x. GPT-4o at 4 bits/message: 1.33 bps. Gemini at 3 bits/message: 1.0 bps. 50 messages on Claude exfiltrates 31 bytes — enough for API key prefixes, session tokens, PII flags.
+**Bandwidth analysis:** Claude at 5 bits/message achieves 1.67 bps at automated rates, exceeding the NCSC-TG-030 covert channel remediation threshold of 1.0 bps by 1.7x. GPT-4o at 4 bits/message: 1.33 bps. Gemini at 3 bits/message: 1.0 bps. GPT-5 at 0 bits/message: not vulnerable to structural encoding. 50 messages on Claude exfiltrates 31 bytes — enough for API key prefixes, session tokens, PII flags.
 
 ### Part 4: Complete Attack Chains (8 minutes)
 
@@ -154,7 +154,7 @@ All prior work uses out-of-band exfiltration channels (URLs, images, DNS, API en
 1. First demonstration of multi-channel (3-5) structural covert channels in LLM outputs across multiple vendors with bidirectional verification
 2. First detection toolkit for this threat class (behavioral fingerprinting)
 3. First complete self-contained attack chain (Custom GPT + Action + server = automated exfiltration)
-4. First cross-tool invocation via poisoned tool responses (80% GPT-4o, 75% GPT-5)
+4. First cross-tool invocation via poisoned tool responses (90% Gemini, 75% GPT-4o, 75% GPT-5, 0% Claude; n=20)
 5. First demonstration through standard RAG frameworks (LangChain 100%, LlamaIndex 100%)
 6. Comprehensive defense evasion: 0% detection across 6 commercial tools
 

@@ -145,7 +145,8 @@ def run_combined_test_unified(
     print(f"\n{'='*60}")
     print(f"  COMBINED MULTI-CHANNEL TEST — {spec.model_id}")
     print(f"  Provider: {spec.provider} | Friendly: {spec.friendly_name}")
-    print(f"  Payload: {payload.decode('ascii', errors='replace')} ({payload.hex()})")
+    payload_display = payload.decode('ascii', errors='replace').encode('ascii', errors='replace').decode('ascii')
+    print(f"  Payload: {payload_display} ({payload.hex()})")
     print(f"  Channels: {encoder.raw_channel_count()} total")
     print(f"  Data capacity: {encoder.capacity()} bits/message")
     print(f"  Hamming ECC: {'yes' if encoder.use_hamming else 'no'}")
@@ -307,8 +308,11 @@ def main():
     )
     parser.add_argument("--payload", default="EXFIL",
                         help="Payload string to encode (default: EXFIL)")
-    parser.add_argument("--trials", type=int, default=3,
-                        help="Number of trials per model (default: 3)")
+    parser.add_argument("--trials", type=int, default=10,
+                        help="Number of trials per model (default: 10)")
+    parser.add_argument("--bidirectional", action="store_true",
+                        help="Run with payload AND its complement to verify "
+                             "channels work in both directions")
 
     # New unified model selection
     parser.add_argument("--model", action="append", dest="model_list",
@@ -481,6 +485,37 @@ def main():
         )
         all_results[spec.friendly_name] = result
 
+    # Bidirectional: run complement payload and compare
+    complement_results = {}
+    if args.bidirectional:
+        complement_payload = bytes([(~b) & 0xFF for b in payload])
+        complement_str = complement_payload.hex()
+        print(f"\n{'='*60}")
+        print(f"  BIDIRECTIONAL: Running complement payload (0x{complement_str})")
+        print(f"{'='*60}")
+
+        for spec in model_specs:
+            if use_adaptive and args.channels is None:
+                model_encoder = MultiChannelEncoder(
+                    model_hint=spec.friendly_name,
+                    include_cotse=use_cotse,
+                    use_hamming=use_hamming,
+                )
+                model_decoder = MultiChannelDecoder(
+                    model_hint=spec.friendly_name,
+                    include_cotse=use_cotse,
+                    use_hamming=use_hamming,
+                )
+            else:
+                model_encoder = encoder
+                model_decoder = decoder
+
+            result = run_combined_test_unified(
+                spec, complement_payload, model_encoder, model_decoder,
+                args.trials, args.delay,
+            )
+            complement_results[spec.friendly_name] = result
+
     # Save results with timestamp to avoid overwriting
     output_dir = str(Path(__file__).parent.parent / "results")
     os.makedirs(output_dir, exist_ok=True)
@@ -494,6 +529,7 @@ def main():
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "payload": args.payload,
         "payload_hex": payload.hex(),
+        "bidirectional": args.bidirectional,
         "config": {
             "channels": encoder.channel_names,
             "include_cotse": use_cotse,
@@ -504,6 +540,9 @@ def main():
         "models_tested": [s.friendly_name for s in model_specs],
         "results": all_results,
     }
+    if args.bidirectional:
+        output["complement_payload_hex"] = complement_payload.hex()
+        output["complement_results"] = complement_results
     for path in [results_path, canonical_path]:
         with open(path, "w", encoding="utf-8") as f:
             json.dump(output, f, indent=2, default=str)
@@ -517,10 +556,14 @@ def main():
     for name, result in all_results.items():
         model = result["model"]
         print(f"\n  {model} ({name}):")
-        print(f"    Channel accuracy: {result['channel_accuracy']:.0%}")
-        print(f"    Data accuracy:    {result['data_accuracy']:.0%}")
-        print(f"    Capacity:         {result['data_capacity']} data bits/message")
-        print(f"    Injection size:   {result['injection_length']} chars")
+        print(f"    Payload accuracy:    {result['channel_accuracy']:.0%}")
+        print(f"    Data accuracy:       {result['data_accuracy']:.0%}")
+        if args.bidirectional and name in complement_results:
+            comp = complement_results[name]
+            print(f"    Complement accuracy: {comp['channel_accuracy']:.0%}")
+            combined = (result['channel_accuracy'] + comp['channel_accuracy']) / 2
+            print(f"    Bidirectional avg:   {combined:.0%}")
+        print(f"    Capacity:            {result['data_capacity']} data bits/message")
 
 
 if __name__ == "__main__":
