@@ -59,9 +59,10 @@ The PHANTOM directive achieves **100%** accuracy through standard LangChain (v1.
 ### Cross-Tool Invocation (Demonstrated on Other Models)
 
 When a tool response from an approved tool contains instructions to invoke a second, unapproved tool:
-- GPT-4o generates the unauthorized call **80%** (4/5)
-- GPT-5 triggers **75%** (3/4)
-- Claude blocks **100%** (0/5)
+- Gemini 3 Flash generates the unauthorized call **90%** (18/20)
+- GPT-4o generates the unauthorized call **75%** (15/20)
+- GPT-5 triggers **75%** (15/20)
+- Claude blocks **100%** (0/20)
 
 This trust boundary violation is relevant to Bedrock Agents' tool-use interface.
 

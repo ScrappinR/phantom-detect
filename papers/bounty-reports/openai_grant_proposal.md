@@ -61,7 +61,7 @@ The cross-vendor portability across GPT-4o, Claude, and Gemini demonstrates that
 
 A 50-message conversation exfiltrates 250 bits (~31 bytes) on Claude or 200 bits (~25 bytes) on GPT-4o -- sufficient for API keys, session tokens, short passwords, or PII classification flags. At API-automated interaction rates (~3 seconds per response), Claude's 5-channel configuration operates at 1.67 bits per second, exceeding the NCSC-TG-030 remediation threshold of 1.0 bps by 1.7x.
 
-**Cross-tool trust boundary violations** amplify this threat in agent deployments. Testing against OpenAI's tool-use API shows that poisoned tool responses cause unauthorized tool invocation at 80% rate on GPT-4o and 75% on GPT-5 — meaning a poisoned document processed by one tool can trigger exfiltration through a second tool the user never approved. Claude Sonnet 4.6 blocks this at 0%, demonstrating the vulnerability is fixable at the model level.
+**Cross-tool trust boundary violations** amplify this threat in agent deployments. Testing against production tool-use APIs (n=20 per model, March 2026) shows that poisoned tool responses cause unauthorized tool invocation at 90% on Gemini 3 Flash, 75% on GPT-4o, and 75% on GPT-5 — meaning a poisoned document processed by one tool can trigger exfiltration through a second tool the user never approved. Claude Sonnet 4.6 blocks this at 0% (0/20), demonstrating the vulnerability is fixable at the model level.
 
 The critical properties that make this threat class significant:
 

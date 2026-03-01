@@ -54,9 +54,10 @@ Each channel independently encodes one binary bit. Across models, 2-5 of these c
 ### Cross-Tool Invocation (Demonstrated on Other Models)
 
 When a tool response from an approved tool contains instructions to invoke a second, unapproved tool:
-- GPT-4o generates the unauthorized call **80%** of the time (4/5)
-- GPT-5 triggers **75%** (3/4), including serializing full conversation context into tool parameters
-- Claude Sonnet 4.6 blocks **100%** (0/5)
+- Gemini 3 Flash generates the unauthorized call **90%** (18/20)
+- GPT-4o generates the unauthorized call **75%** (15/20)
+- GPT-5 triggers **75%** (15/20), including serializing full conversation context into tool parameters
+- Claude Sonnet 4.6 blocks **100%** (0/20)
 
 This trust boundary violation likely applies to Grok's tool-use interface as well.
 

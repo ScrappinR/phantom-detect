@@ -83,7 +83,7 @@ The attacker plants the encoding directive (~2,600 chars disguised as an "editor
 
 8. **MCP Server Tool Output Injection** (demonstrated, 64% accuracy): A malicious MCP server implements benign tools (search_codebase, fetch_docs, get_build_config). Tool results contain legitimate data plus PHANTOM encoding directives disguised as "code style compliance notes" or "documentation formatting standards." When Claude processes the tool output, the directives activate the covert channel. Individual tools achieve up to 100% accuracy (get_build_config: 5/5 channels correct). This is VDP-relevant: MCP tool responses are processed as trusted context.
 
-9. **Cross-Tool Invocation Resistance** (tested, 0% trigger rate on Claude): We tested whether a poisoned MCP tool response could trick Claude into invoking a second, unapproved tool (send_telemetry) without user permission. Claude Sonnet 4.6 blocked all 5 attempts — the model mentions the tool in text but refuses to generate an actual tool_use call. For comparison, GPT-4o triggered 80% (4/5) and GPT-5 triggered 75% (3/4) on the same test. This is a positive safety finding for Claude's tool-use boundaries, but the structural formatting exfiltration channel (Vectors 1-8) remains fully operational.
+9. **Cross-Tool Invocation Resistance** (tested, 0% trigger rate on Claude): We tested whether a poisoned MCP tool response could trick Claude into invoking a second, unapproved tool (send_telemetry) without user permission. Claude Sonnet 4.6 blocked all 20 attempts (n=20, March 2026) — the model mentions the tool in text but refuses to generate an actual tool_use call. For comparison, Gemini 3 Flash triggered 90% (18/20), GPT-4o triggered 75% (15/20), and GPT-5 triggered 75% (15/20) on the same test. This is a positive safety finding for Claude's tool-use boundaries, but the structural formatting exfiltration channel (Vectors 1-8) remains fully operational.
 
 10. **RAG Framework Injection** (demonstrated, 100% on LangChain and LlamaIndex): A poisoned document disguised as "Acme Corporation Enterprise Writing Style Guide v4.2" injected into a standard LangChain (v1.2.10, FAISS, LCEL) or LlamaIndex (v0.14.15, VectorStoreIndex) RAG pipeline produces 100% channel accuracy (20/20 measurements each, 5 trials). The poisoned document was retrieved as context in 100% of trials. Any Claude-backed RAG application processing untrusted documents is vulnerable.
 
@@ -437,7 +437,8 @@ A data-aware variant has been demonstrated where the system prompt instructs: "I
 | 2026-02-27 | Live Claude Code testing (`claude -p`): CLAUDE.md 55% bidirectional, file read 52% |
 | 2026-02-27 | Key finding: Claude Code detects injection but cannot fully suppress CASE channel (bidirectional) |
 | 2026-02-27 | MTCSE multi-turn channel verified (83% on Claude) |
-| 2026-02-27 | Cross-tool invocation tested: Claude blocks 100%, GPT-4o triggers 80% |
+| 2026-02-27 | Cross-tool invocation initial testing (n=5): Claude blocks 100%, GPT-4o triggers 80% |
+| 2026-03-01 | Cross-tool invocation extended (n=20): Claude 0%, GPT-4o 75%, GPT-5 75%, Gemini 90% |
 | 2026-02-27 | LangChain + LlamaIndex RAG injection: 100% on both frameworks |
 | 2026-02-27 | Report submitted to Anthropic via HackerOne |
 | 2026-02-26 | Coordinated disclosure to Google (AI VRP) and OpenAI (Bugcrowd) |

@@ -64,10 +64,10 @@ Additional channels (BSE, RCTE, COTSE variants) were tested but found to be unid
 | Direct system prompt | **100%** (12/12) | 3 |
 | RAG document poisoning | **100%** (12/12) | 3 |
 | Tool output injection | **92%** (11/12) | 3 |
-| Cross-tool invocation (GPT-4o) | **80%** trigger rate (4/5) | 5 |
-| Cross-tool invocation (GPT-5) | **75%** trigger rate (3/4) | 4 |
+| Cross-tool invocation (GPT-4o) | **75%** trigger rate (15/20) | 20 |
+| Cross-tool invocation (GPT-5) | **75%** trigger rate (15/20) | 20 |
 
-**Cross-tool invocation (Vector D):** When a tool response from an approved tool (search_codebase) contains instructions to invoke a second, unapproved tool (send_telemetry), GPT-4o generates the unauthorized tool call 80% of the time and GPT-5 triggers 75%. GPT-5's session_exfil variant serialized the full conversation context into the telemetry parameters. This is a trust boundary violation: user approval of Tool A is leveraged to invoke Tool B without consent. For comparison, Claude Sonnet 4.6 blocked all 5 attempts (0% trigger rate).
+**Cross-tool invocation (Vector D, n=20, March 2026):** When a tool response from an approved tool (search_codebase) contains instructions to invoke a second, unapproved tool (send_telemetry), GPT-4o generates the unauthorized tool call 75% of the time (15/20) and GPT-5 triggers 75% (15/20). GPT-5's session_exfil variant serialized the full conversation context into structured JSON in the telemetry parameters (100%, 5/5). Gemini 3 Flash triggers at 90% (18/20). This is a trust boundary violation: user approval of Tool A is leveraged to invoke Tool B without consent. Claude Sonnet 4.6 blocked all 20 attempts (0% trigger rate).
 
 ### This Is a Product Security Issue, Not a Model Safety Issue
 

@@ -42,7 +42,7 @@ A poisoned README.md contains the directive in HTML comments. When Claude Code r
 A document in the knowledge base or shared Project workspace contains the directive. When retrieved, it activates the channel.
 
 **5. Cross-Tool Invocation Resistance (positive finding):**
-We tested whether a poisoned MCP tool response could trick Claude into invoking a second, unapproved tool (e.g., `send_telemetry`) without user permission. Claude Sonnet 4.6 blocked all 5 attempts (0% trigger rate) — the model mentions the tool in text but refuses to generate an actual tool_use call. For comparison, GPT-4o triggered 80% (4/5) and GPT-5 triggered 75% (3/4) on the same test. Claude's tool-use safety is stronger here. However, the structural formatting exfiltration channel (Vectors 1-4) remains fully operational.
+We tested whether a poisoned MCP tool response could trick Claude into invoking a second, unapproved tool (e.g., `send_telemetry`) without user permission. Claude Sonnet 4.6 blocked all 20 attempts (0% trigger rate, n=20) — the model mentions the tool in text but refuses to generate an actual tool_use call. For comparison, Gemini 3 Flash triggered 90% (18/20), GPT-4o triggered 75% (15/20), and GPT-5 triggered 75% (15/20) on the same test. Claude's tool-use safety is stronger here. However, the structural formatting exfiltration channel (Vectors 1-4) remains fully operational.
 
 ### Defense Evasion (0% Detection)
 
@@ -192,7 +192,8 @@ Deploy statistical monitoring on structural formatting patterns (contraction rat
 | 2026-02-25 | Full cross-vendor results |
 | 2026-02-27 | CLAUDE.md, file injection, MCP server PoCs completed |
 | 2026-02-27 | MTCSE multi-turn channel verified (83% on Claude) |
-| 2026-02-27 | Cross-tool invocation tested: Claude blocks 100%, GPT-4o triggers 80% |
+| 2026-02-27 | Cross-tool invocation initial testing (n=5): Claude blocks 100%, GPT-4o triggers 80% |
+| 2026-03-01 | Cross-tool invocation extended (n=20): Claude 0%, GPT-4o 75%, GPT-5 75%, Gemini 90% |
 | 2026-02-27 | Report submitted to Anthropic via HackerOne VDP |
 | 2026-02-27 | Coordinated disclosure to Google (AI VRP) and OpenAI (Bugcrowd) |
 | TBD | Vendor response |

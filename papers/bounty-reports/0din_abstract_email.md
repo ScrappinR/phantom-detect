@@ -30,7 +30,7 @@ An attacker embeds a ~2,600-character directive (disguised as an "editorial styl
 - Custom GPT Action callback: 95% accuracy, self-contained automatic exfiltration
 - ChatGPT memory persistence: 100% accuracy, survives across all future conversations, post-patch (Dec 2025 URL filtering)
 - Indirect injection via RAG/tool output: 92-100% accuracy
-- Cross-tool invocation: GPT-4o triggers unauthorized tool calls 80% of the time (4/5), GPT-5 at 75% (3/4) — Claude blocks 100%
+- Cross-tool invocation (n=20): Gemini 90% (18/20), GPT-4o 75% (15/20), GPT-5 75% (15/20) — Claude blocks 100% (0/20)
 - RAG framework injection: 100% accuracy through both LangChain (v1.2.10) and LlamaIndex (v0.14.15) standard pipelines
 - Multi-turn channel (MTCSE): +1 bit per conversation via back-reference control, 100% bidirectional on GPT-4o and Gemini
 
