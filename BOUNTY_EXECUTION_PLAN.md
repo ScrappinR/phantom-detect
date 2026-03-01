@@ -151,7 +151,7 @@ Research (March 1, 2026) reveals:
 3. SSRF in URL-accepting tool components
 4. Serialization injection (LangGrinch-style: $4,000 payout precedent)
 
-**Decision needed:** Spend 10-12 hours hunting actual code-level bugs, or drop Huntr and reallocate effort to higher-EV targets.
+**Decision (March 1):** DROP HUNTR. Reallocate 10-12 hours to Brave Leo and Microsoft Copilot manual testing.
 
 ---
 
@@ -211,7 +211,7 @@ Review HackerOne scope. Test public-facing AI interfaces in Foundry/AIP. Lower p
 | 4 | Google AI VRP | $15,000 | $30,000 | 35% | $5,250 | $10,500 |
 | 5 | Microsoft Copilot | $5,000 | $45,000 | 30% | $1,500 | $13,500 |
 | 6 | OpenAI Grant | $10,000 | $10,000 | 30% | $3,000 | $3,000 |
-| 7 | Huntr | $200 | $50,000 | 10%* | $20 | $5,000 |
+| ~~7~~ | ~~Huntr~~ | ~~$200~~ | ~~$50,000~~ | **DROPPED** | $0 | $0 |
 | 8 | Brave Leo | $500 | $40,000 | 25% | $125 | $10,000 |
 | 9 | Salesforce | $1,000 | $60,000 | 20% | $200 | $12,000 |
 | 10 | DARPA SABER | $100,000 | $10,000,000 | 20% | $20,000 | $2,000,000 |
