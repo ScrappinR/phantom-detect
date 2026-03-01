@@ -29,11 +29,11 @@ We have built and validated the only operational toolkit for this vulnerability 
 
 | Metric | Value |
 |--------|-------|
-| Channels validated | 9 independent structural encoding channels |
-| Models tested | 6 production LLMs (Claude Sonnet/Opus 4.6, GPT-4o, GPT-5, Gemini 3 Flash) |
-| Per-channel accuracy | 80-100% (bidirectionally verified, n=20 per direction per channel) |
-| Cross-vendor universal channels | 3 (PUNC, COTSE_enumeration, COTSE_sentence_length) — >80% all models |
-| Aggregate bandwidth | 2.33 bits/second (automated), exceeding NCSC-TG-030 1 bps threshold |
+| Channels validated | 10 channels tested, 5 bidirectionally verified (Claude), 4 (GPT-4o), 3 (Gemini) |
+| Models tested | 4 production LLMs (Claude Sonnet 4.6, GPT-4o, GPT-5, Gemini 3 Flash), n=20 per direction |
+| Per-channel accuracy | 90-100% per direction on verified channels (Claude 100%, GPT-4o 80-100%, Gemini 90-100%) |
+| Cross-vendor universal channels | 3 (PUNC, CCE, CASE) — >80% all models with bidirectional control |
+| Aggregate bandwidth | 1.67 bits/second (Claude, 5ch/3s), exceeding NCSC-TG-030 1 bps threshold by 1.7x |
 | Error correction | Hamming(7,4) ECC integrated |
 | Attack vectors validated | 7 (direct injection, RAG poisoning, tool response injection, file read injection, Custom GPT Actions, memory persistence, cross-platform relay) |
 | Cross-tool invocation | 90% Gemini, 75% GPT-4o, 75% GPT-5, 0% Claude (n=20, unauthorized tool calls via poisoned tool responses) |
@@ -43,7 +43,7 @@ We have built and validated the only operational toolkit for this vulnerability 
 
 | Metric | Value |
 |--------|-------|
-| Detection method | Behavioral fingerprinting (9-feature statistical baseline comparison) |
+| Detection method | Behavioral fingerprinting (12-feature statistical baseline comparison) |
 | Detection rate | **100%** (full-channel encoding) |
 | False positive rate | 10% |
 | Adversarial robustness | 30% detection against reduced 3-channel configuration |
